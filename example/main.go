@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/koshatul/jwt/v2"
+	"github.com/na4ma4/jwt/v2"
 )
 
 // Generate Token from authentication service.
@@ -36,7 +36,7 @@ func main() {
 	//
 
 	// Create verifier using certificate in PEM format
-	verifier, err := jwt.NewRSAVerifierFromFile("myservice", "cert.pem")
+	verifier, err := jwt.NewRSAVerifierFromFile([]string{"myservice"}, "cert.pem")
 	if err != nil {
 		log.Panic(err)
 	}
@@ -50,5 +50,5 @@ func main() {
 	// Result contains Subject(username), Audience and other useful data, but just
 	// verifier.Verify not throwing an error is enough for validity.
 	fmt.Printf("Username: %s\n", result.Subject)
-	fmt.Printf("Service: %s\n", result.Audiences[0])
+	fmt.Printf("Service: %q\n", result.Audience)
 }

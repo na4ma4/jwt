@@ -2,19 +2,23 @@ package jwt
 
 import (
 	"crypto/rsa"
+	"fmt"
 	"time"
 
-	"github.com/pascaldekloe/jwt"
+	pascaljwt "github.com/pascaldekloe/jwt"
 )
 
 const (
 	// RS256 RSASSA-PKCS1-v1_5 with SHA-256.
-	RS256 = jwt.RS256
+	RS256 = pascaljwt.RS256
 	// RS384 RSASSA-PKCS1-v1_5 with SHA-348.
-	RS384 = jwt.RS384
+	RS384 = pascaljwt.RS384
 	// RS512 RSASSA-PKCS1-v1_5 with SHA-512.
-	RS512 = jwt.RS512
+	RS512 = pascaljwt.RS512
 )
+
+// // ErrAlgorithmUnknown signals an unsupported "alg" token (for the respective method).
+// var ErrAlgorithmUnknown = pascaljwt.AlgError
 
 // Signer produces a token from a supplied subject and audience with notbefore and expiry times.
 type Signer interface {
@@ -37,13 +41,11 @@ func NewRSASignerFromFile(filename string) (Signer, error) {
 
 	return &RSASigner{
 		PrivateKey: privateKey,
-		Algorithm:  RS256,
+		Algorithm:  pascaljwt.RS256,
 	}, nil
 }
 
 // SignClaims takes a list of claims and produces a signed token.
-// Duplicate keys will we overridden in order of apearance!
-// The issuer defaults to r.Issuer.
 func (r *RSASigner) SignClaims(claims ...Claim) ([]byte, error) {
 	tokenClaims, err := ConstructClaimsFromSlice(
 		append(
@@ -56,45 +58,31 @@ func (r *RSASigner) SignClaims(claims ...Claim) ([]byte, error) {
 	}
 
 	token, err := tokenClaims.RSASign(r.Algorithm, r.PrivateKey)
+	if err != nil {
+		return token, fmt.Errorf("unable to sign claims: %w", err)
+	}
 
-	return token, err
+	return token, nil
 }
 
 // Sign takes a signer, subject, audience, online status, notBefore and expiry and produces a signed token.
 func Sign(
 	signer Signer,
-	subject,
-	audience string,
+	audience []string,
+	subject string,
 	online bool,
-	notBefore,
-	expiry time.Time,
+	notBefore, expiry time.Time,
 ) ([]byte, error) {
-	return signer.SignClaims(
+	token, err := signer.SignClaims(
 		String(Subject, subject),
-		String(Audience, audience),
+		Strings(Audience, audience),
 		Bool("onl", online),
 		Time(NotBefore, notBefore),
 		Time(Expires, expiry),
 	)
-}
+	if err != nil {
+		return token, fmt.Errorf("unable to sign claims: %w", err)
+	}
 
-// SignFingerprint takes a signer, subject, audience, fingerprint, online status, notBefore and expiry
-// and produces a signed token.
-func SignFingerprint(
-	signer Signer,
-	subject,
-	audience,
-	fingerprint string,
-	online bool,
-	notBefore,
-	expiry time.Time,
-) ([]byte, error) {
-	return signer.SignClaims(
-		String(Subject, subject),
-		String(Audience, audience),
-		Bool("onl", online),
-		Time(NotBefore, notBefore),
-		Time(Expires, expiry),
-		String("fpt", fingerprint),
-	)
+	return token, nil
 }

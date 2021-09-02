@@ -1,5 +1,10 @@
 -include .makefiles/Makefile
 -include .makefiles/pkg/go/v1/Makefile
+-include .makefiles/ext/na4ma4/lib/golangci-lint/v1/Makefile
+-include .makefiles/ext/na4ma4/lib/goreleaser/v1/Makefile
+
+.makefiles/ext/na4ma4/%: .makefiles/Makefile
+	@curl -sfL https://raw.githubusercontent.com/na4ma4/makefiles-ext/main/v1/install | bash /dev/stdin "$@"
 
 .makefiles/%:
 	@curl -sfL https://makefiles.dev/v1 | bash /dev/stdin "$@"
@@ -12,19 +17,5 @@ docker-test: $(GO_SOURCE_FILES) $(GENERATED_FILES)
 		-v "$(shell pwd):/code" \
 		-v "$(shell pwd)/artifacts/.makefiles:/code/.makefiles" \
 		--workdir /code \
-		golang:1.14-alpine \
+		golang:1.17-alpine \
 		sh -c 'apk --update add git make curl bash util-linux zip libc-dev gcc; make test'
-
-######################
-# Linting
-######################
-
-GOLANGCILINT := artifacts/golangci-lint/bin/golangci-lint
-$(GOLANGCILINT):
-	@mkdir -p "$(MF_PROJECT_ROOT)/$(@D)"
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(MF_PROJECT_ROOT)/$(@D)" v1.23.8
-
-.PHONY: lint
-lint:: $(MISSPELL) $(GOLANGCILINT) $(STATICCHECK)
-	go vet ./...
-	$(GOLANGCILINT) run --enable-all ./...

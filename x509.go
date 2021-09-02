@@ -5,9 +5,13 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 
 	"github.com/spf13/afero"
 )
+
+// ErrExtractPublicKey is returned if the public key failed to get extracted from a valid certificate file.
+var ErrExtractPublicKey = errors.New("unable to extract public key")
 
 // ParsePKCS1PublicKeyFromFile parses a PKCS1 Public Certificate from a PEM file.
 func ParsePKCS1PublicKeyFromFile(filename string) (*rsa.PublicKey, error) {
@@ -18,7 +22,7 @@ func ParsePKCS1PublicKeyFromFile(filename string) (*rsa.PublicKey, error) {
 func ParsePKCS1PublicKeyFromFileAFS(afs afero.Fs, filename string) (*rsa.PublicKey, error) {
 	data, err := afero.ReadFile(afs, filename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to read certificate: %w", err)
 	}
 
 	return ParsePKCS1PublicKey(data)
@@ -30,14 +34,15 @@ func ParsePKCS1PublicKey(data []byte) (*rsa.PublicKey, error) {
 
 	publicCert, err := x509.ParseCertificate(publicPem.Bytes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to parse certificate: %w", err)
 	}
 
-	if publicKey, ok := publicCert.PublicKey.(*rsa.PublicKey); ok {
-		return publicKey, nil
+	publicKey, ok := publicCert.PublicKey.(*rsa.PublicKey)
+	if !ok {
+		return publicKey, ErrExtractPublicKey
 	}
 
-	return nil, errors.New("unable to parse public key from certificate")
+	return publicKey, nil
 }
 
 // ParsePKCS1PrivateKeyFromFile parses a PKCS1 Private Key from a PEM file.
@@ -49,7 +54,7 @@ func ParsePKCS1PrivateKeyFromFile(filename string) (*rsa.PrivateKey, error) {
 func ParsePKCS1PrivateKeyFromFileAFS(afs afero.Fs, filename string) (*rsa.PrivateKey, error) {
 	data, err := afero.ReadFile(afs, filename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to read private key: %w", err)
 	}
 
 	return ParsePKCS1PrivateKey(data)
@@ -58,7 +63,11 @@ func ParsePKCS1PrivateKeyFromFileAFS(afs afero.Fs, filename string) (*rsa.Privat
 // ParsePKCS1PrivateKey parses a PKCS1 Private Key from a byte slice containing an RSA key in PEM format.
 func ParsePKCS1PrivateKey(data []byte) (*rsa.PrivateKey, error) {
 	privatePem, _ := pem.Decode(data)
-	privateKey, err := x509.ParsePKCS1PrivateKey(privatePem.Bytes)
 
-	return privateKey, err
+	privateKey, err := x509.ParsePKCS1PrivateKey(privatePem.Bytes)
+	if err != nil {
+		return privateKey, fmt.Errorf("unable to parse private key: %w", err)
+	}
+
+	return privateKey, nil
 }

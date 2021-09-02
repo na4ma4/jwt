@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pascaldekloe/jwt"
+	pascaljwt "github.com/pascaldekloe/jwt"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -68,6 +68,8 @@ const (
 	Int8Type
 	// StringType indicates that the field carries a string.
 	StringType
+	// StringsType indicates that the field carries a string slice.
+	StringsType
 	// TimeType indicates that the field carries a time.Time.
 	TimeType
 	// Uint64Type indicates that the field carries a uint64.
@@ -94,8 +96,8 @@ const (
 	SkipType
 )
 
-// // Claims is JWT payload representation relayed from `jwt.Claims`.
-// type Claims jwt.Claims
+// // Claims is JWT payload representation relayed from `pascaljwt.Claims`.
+// type Claims pascaljwt.Claims
 
 // A Claim is a marshaling operation used to add a key-value pair to a tokens
 // context. Most claims are lazily marshaled, so it's inexpensive to add claims
@@ -104,14 +106,12 @@ type Claim struct {
 	Key       string
 	Type      ClaimType
 	Integer   int64
-	Uinteger  uint64
-	Float     float64
 	String    string
 	Interface interface{}
 }
 
 // IsRegistered returns true if the Key is a IANA registered "JSON Web Token Claims".
-func (c Claim) IsRegistered() bool {
+func (c *Claim) IsRegistered() bool {
 	switch strings.ToLower(c.Key) {
 	case "issuer", Issuer,
 		"subject", Subject,
@@ -127,7 +127,7 @@ func (c Claim) IsRegistered() bool {
 }
 
 // Field returns the JWT compatible field from some useful longer names.
-func (c Claim) Field() string {
+func (c *Claim) Field() string {
 	switch strings.ToLower(c.Key) {
 	case "issuer", Issuer:
 		return Issuer
@@ -148,64 +148,53 @@ func (c Claim) Field() string {
 	}
 }
 
-// Time returns the time value of the `Claim` or an error if it is not a `TimeType`.
-func (c Claim) Time() (time.Time, error) {
+// Time returns the time value of the `Field` or an error if it is not a `TimeType`.
+func (c *Claim) Time() (time.Time, error) {
 	if c.Type == TimeType {
 		t := time.Unix(0, c.Integer)
 
 		return t, nil
 	}
 
-	if c.Type == Float64Type {
-		t := jwt.NumericTime(c.Float)
-
-		return t.Time(), nil
-	}
-
 	return time.Time{}, ErrInvalidClaimType
 }
 
-// String constructs a claim with the given key and value.
+// String constructs a field with the given key and value.
 func String(key, val string) Claim {
 	return Claim{Key: key, Type: StringType, String: val}
 }
 
-// Float constructs a claim with the given key and value.
-func Float(key string, val float64) Claim {
-	return Claim{Key: key, Type: Float64Type, Float: val}
+// Strings constructs a field with the given key and value.
+func Strings(key string, val []string) Claim {
+	return Claim{Key: key, Type: StringsType, Interface: val}
 }
 
-// Int constructs a claim with the given key and value.
-func Int(key string, val int64) Claim {
-	// TODO Find a way around the pascaldekloe/jwt package decoding json numbers
-	//   as float64 (standard encoding/json Unmarshaling)
-	// return Claim{Key: key, Type: Int64Type, Interface: int64(val)}
-	return Float(key, float64(val))
-}
-
-// Uint constructs a claim with the given key and value.
-func Uint(key string, val uint64) Claim {
-	// TODO Find a way around the pascaldekloe/jwt package decoding json numbers
-	//   as float64 (standard encoding/json Unmarshaling)
-	// return Claim{Key: key, Type: Uint64Type, Interface: uint64(val)}
-	return Float(key, float64(val))
-}
-
-// Time constructs a claim with the given key and value.
+// Time constructs a field with the given key and value.
 func Time(key string, val time.Time) Claim {
 	return Claim{
 		Key:     key,
 		Type:    TimeType,
 		Integer: val.UnixNano(),
+		// Interface: val.Location(),
 	}
 }
 
-// Bool constructs a claim with the given key and value.
+// Int constructs a field with the given key and value.
+func Int(key string, val int) Claim {
+	return Int64(key, int64(val))
+}
+
+// Int64 constructs a field with the given key and value.
+func Int64(key string, val int64) Claim {
+	return Claim{Key: key, Type: Int64Type, Integer: val}
+}
+
+// Bool constructs a field with the given key and value.
 func Bool(key string, val bool) Claim {
 	return Claim{Key: key, Type: BoolType, Interface: val}
 }
 
-// Reflect constructs a claim with the given key and an arbitrary object. It uses
+// Reflect constructs a field with the given key and an arbitrary object. It uses
 // an encoding-appropriate, reflection-based function to lazily serialize nearly
 // any object into the logging context, but it's relatively slow and
 // allocation-heavy. Outside tests, Any is always a better choice.
@@ -217,88 +206,25 @@ func Reflect(key string, val interface{}) Claim {
 }
 
 // Any takes a key and an arbitrary value and chooses the best way to represent
-// them as a claim, falling back to a reflection-based approach only if
+// them as a field, falling back to a reflection-based approach only if
 // necessary.
 //
 // Since byte/uint8 and rune/int32 are aliases, Any can't differentiate between
 // them. To minimize surprises, []byte values are treated as binary blobs, byte
 // values are treated as uint8, and runes are always treated as integers.
 //
-//nolint:funlen
 func Any(key string, value interface{}) Claim {
 	switch val := value.(type) {
-	// case ObjectMarshaler:
-	// 	return Object(key, val)
-	// case ArrayMarshaler:
-	// 	return Array(key, val)
 	case bool:
 		return Bool(key, val)
-	// case []bool:
-	// 	return Bools(key, val)
-	// case complex128:
-	// 	return Complex128(key, val)
-	// case []complex128:
-	// 	return Complex128s(key, val)
-	// case complex64:
-	// 	return Complex64(key, val)
-	// case []complex64:
-	// 	return Complex64s(key, val)
-	case float64:
-		return Float(key, val)
-	// case []float64:
-	// 	return Float64s(key, val)
-	case float32:
-		return Float(key, float64(val))
-	// case []float32:
-	// 	return Float32s(key, val)
 	case int:
-		return Int(key, int64(val))
-	// case []int:
-	// 	return Ints(key, val)
-	case int64:
 		return Int(key, val)
-	// case []int64:
-	// 	return Int64s(key, val)
-	case int32:
-		return Int(key, int64(val))
-	// case []int32:
-	// 	return Int32s(key, val)
-	case int16:
-		return Int(key, int64(val))
-	// case []int16:
-	// 	return Int16s(key, val)
-	case int8:
-		return Int(key, int64(val))
-	// case []int8:
-	// 	return Int8s(key, val)
+	case int64:
+		return Int64(key, val)
 	case string:
 		return String(key, val)
-	// case []string:
-	// 	return Strings(key, val)
-	case uint:
-		return Uint(key, uint64(val))
-	// case []uint:
-	// 	return Uints(key, val)
-	case uint64:
-		return Uint(key, val)
-	// case []uint64:
-	// 	return Uint64s(key, val)
-	case uint32:
-		return Uint(key, uint64(val))
-	// case []uint32:
-	// 	return Uint32s(key, val)
-	case uint16:
-		return Uint(key, uint64(val))
-	// case []uint16:
-	// 	return Uint16s(key, val)
-	case uint8:
-		return Uint(key, uint64(val))
-	// case []byte:
-	// 	return Binary(key, val)
-	// case uintptr:
-	// 	return Uintptr(key, val)
-	// case []uintptr:
-	// 	return Uintptrs(key, val)
+	case []string:
+		return Strings(key, val)
 	case time.Time:
 		return Time(key, val)
 	// case []time.Time:
@@ -318,13 +244,12 @@ func Any(key string, value interface{}) Claim {
 	}
 }
 
-// ConstructClaimsFromSlice takes a slice of `Claim`s and returns a prepared `jwt.Claims` pointer,
-// or an error if construction failed.
-//
-// Duplicate keys will we overridden in order of apearance!
-func ConstructClaimsFromSlice(claims ...Claim) (*jwt.Claims, error) {
-	tokenClaims := &jwt.Claims{
-		Set: map[string]interface{}{},
+// ConstructClaimsFromSlice takes a slice of `Claim`s and returns a prepared
+// `pascaljwt.Claims` pointer, or an error if construction failed.
+func ConstructClaimsFromSlice(claims ...Claim) (*pascaljwt.Claims, error) {
+	tokenClaims := &pascaljwt.Claims{
+		Registered: pascaljwt.Registered{},
+		Set:        map[string]interface{}{},
 	}
 
 	for _, claim := range claims {
@@ -348,47 +273,53 @@ func ConstructClaimsFromSlice(claims ...Claim) (*jwt.Claims, error) {
 	return tokenClaims, nil
 }
 
+// ErrInvalidTypeForClaim is returned when a registered claim is using an invalid type.
+var ErrInvalidTypeForClaim = errors.New("invalid type for registered claim")
+
 // constructRegisteredClaim adds IANA registered `Claim` fields to the supplied `jwt.Claims`.
-func constructRegisteredClaim(tokenClaims *jwt.Claims, claim Claim) error {
+//nolint:cyclop
+func constructRegisteredClaim(tokenClaims *pascaljwt.Claims, claim Claim) error {
 	switch claim.Field() {
 	case Issuer:
 		tokenClaims.Registered.Issuer = claim.String
 	case Subject:
 		tokenClaims.Registered.Subject = claim.String
 	case Audience:
-		tokenClaims.Registered.Audiences = append(tokenClaims.Registered.Audiences, claim.String)
+		if v, ok := claim.Interface.([]string); ok {
+			tokenClaims.Registered.Audiences = v
+		}
 	case Expires:
 		if claim.Type == TimeType {
 			t, err := claim.Time()
 			if err != nil {
-				return err
+				return fmt.Errorf("%w for exp", err)
 			}
 
-			tokenClaims.Registered.Expires = jwt.NewNumericTime(t)
+			tokenClaims.Registered.Expires = pascaljwt.NewNumericTime(t)
 		} else {
-			return errors.New("invalid type for exp")
+			return fmt.Errorf("%w for exp", ErrInvalidTypeForClaim)
 		}
 	case NotBefore:
 		if claim.Type == TimeType {
 			t, err := claim.Time()
 			if err != nil {
-				return err
+				return fmt.Errorf("%w for nbf", err)
 			}
 
-			tokenClaims.Registered.NotBefore = jwt.NewNumericTime(t)
+			tokenClaims.Registered.NotBefore = pascaljwt.NewNumericTime(t)
 		} else {
-			return errors.New("invalid type for nbf")
+			return fmt.Errorf("%w for nbf", ErrInvalidTypeForClaim)
 		}
 	case Issued:
 		if claim.Type == TimeType {
 			t, err := claim.Time()
 			if err != nil {
-				return err
+				return fmt.Errorf("%w for iat", err)
 			}
 
-			tokenClaims.Registered.Issued = jwt.NewNumericTime(t)
+			tokenClaims.Registered.Issued = pascaljwt.NewNumericTime(t)
 		} else {
-			return errors.New("invalid type for iat")
+			return fmt.Errorf("%w for iat", ErrInvalidTypeForClaim)
 		}
 	case ID:
 		tokenClaims.Registered.ID = claim.String
@@ -397,38 +328,45 @@ func constructRegisteredClaim(tokenClaims *jwt.Claims, claim Claim) error {
 	return nil
 }
 
-// constructRegisteredClaim adds unregistered `Claim` fields to the supplied `jwt.Claims`.
-func constructUnregisteredClaim(tokenClaims *jwt.Claims, claim Claim) error {
+// ErrUnsupportedClaimType is returned when an unsupported claim type is used.
+var ErrUnsupportedClaimType = errors.New("unsupported claim type")
+
+// ErrClaimFormatInvalid is returned when a claim format is invalid.
+var ErrClaimFormatInvalid = errors.New("claim format is invalid")
+
+// constructRegisteredClaim adds unregistered `Claim` fields to the supplied `pascaljwt.Claims`.
+//nolint:cyclop
+func constructUnregisteredClaim(tokenClaims *pascaljwt.Claims, claim Claim) error {
 	switch claim.Type {
-	// case Int8Type, Int16Type, Int32Type, Int64Type:
-	// 	tokenClaims.Set[claim.Key] = claim.Interface.(int64)
-	// case Uint8Type, Uint16Type, Uint32Type, Uint64Type:
-	// 	tokenClaims.Set[claim.Key] = claim.Interface.(uint64)
-	// case Float32Type, Float64Type:
-	// 	tokenClaims.Set[claim.Key] = claim.Float
-	// TODO Find a way around the pascaldekloe/jwt package decoding json numbers
-	//   as float64 (standard encoding/json Unmarshaling)
-	case Int8Type, Int16Type, Int32Type, Int64Type,
-		Uint8Type, Uint16Type, Uint32Type, Uint64Type,
-		Float32Type, Float64Type:
-		tokenClaims.Set[claim.Key] = claim.Float
+	case ArrayMarshalerType, BinaryType, ByteStringType, Complex128Type, Complex64Type, DurationType,
+		ErrorType, Float32Type, Float64Type, NamespaceType, ObjectMarshalerType, ReflectType, SkipType,
+		StringerType, Uint16Type, Uint32Type, Uint64Type, Uint8Type, UintptrType, UnknownType:
+		return fmt.Errorf("%w: %d", ErrUnsupportedClaimType, claim.Type)
+	case Int8Type, Int16Type, Int32Type, Int64Type:
+		tokenClaims.Set[claim.Key] = claim.Integer
 	case StringType:
 		tokenClaims.Set[claim.Key] = claim.String
+	case StringsType:
+		if v, ok := claim.Interface.([]string); ok {
+			tokenClaims.Set[claim.Key] = v
+		} else {
+			return fmt.Errorf("%w []string claim type: %s", ErrClaimFormatInvalid, claim.Key)
+		}
 	case BoolType:
 		if b, ok := claim.Interface.(bool); ok {
 			tokenClaims.Set[claim.Key] = b
 		} else {
-			return fmt.Errorf("bool claim type format incorrect: %s", claim.Key)
+			return fmt.Errorf("%w bool claim type: %s", ErrClaimFormatInvalid, claim.Key)
 		}
 	case TimeType:
 		t, err := claim.Time()
 		if err != nil {
-			return err
+			return fmt.Errorf("%w for %s", err, claim.Key)
 		}
 
-		tokenClaims.Set[claim.Key] = jwt.NewNumericTime(t)
+		tokenClaims.Set[claim.Key] = pascaljwt.NewNumericTime(t)
 	default:
-		return fmt.Errorf("unsupported claim type: %d", claim.Type)
+		return fmt.Errorf("%w: %d", ErrUnsupportedClaimType, claim.Type)
 	}
 
 	return nil

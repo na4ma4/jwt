@@ -1,15 +1,27 @@
 package jwt_test
 
 import (
-	"github.com/koshatul/jwt/v2"
+	"github.com/na4ma4/jwt/v2"
+	"github.com/na4ma4/permbits"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
 )
 
 func createAfs() afero.Fs {
 	afs := afero.NewMemMapFs()
-	_ = afero.WriteFile(afs, "cert.pem", []byte(rsaPublicKey), 0755)
-	_ = afero.WriteFile(afs, "key.pem", []byte(rsaPrivateKey), 0755)
+
+	_ = afero.WriteFile(
+		afs,
+		"cert.pem",
+		[]byte(rsaPublicKey),
+		permbits.UserAll+permbits.GroupRead+permbits.GroupExecute+permbits.OtherRead+permbits.OtherExecute,
+	)
+	_ = afero.WriteFile(
+		afs,
+		"key.pem",
+		[]byte(rsaPrivateKey),
+		permbits.UserAll+permbits.GroupRead+permbits.GroupExecute+permbits.OtherRead+permbits.OtherExecute,
+	)
 
 	return afs
 }
@@ -29,7 +41,7 @@ func createVerifier() jwt.Verifier {
 	Expect(err).NotTo(HaveOccurred())
 
 	return &jwt.RSAVerifier{
-		Audience:  "audience",
+		Audiences: []string{"test-audience", "second-test-audience"},
 		PublicKey: publicKey,
 	}
 }
