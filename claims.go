@@ -295,7 +295,7 @@ func constructRegisteredClaim(tokenClaims *pascaljwt.Claims, claim Claim) error 
 				return fmt.Errorf("%w for exp", err)
 			}
 
-			tokenClaims.Registered.Expires = pascaljwt.NewNumericTime(t)
+			tokenClaims.Registered.Expires = pascaljwt.NewNumericTime(t.Round(time.Second))
 		} else {
 			return fmt.Errorf("%w for exp", ErrInvalidTypeForClaim)
 		}
@@ -306,7 +306,7 @@ func constructRegisteredClaim(tokenClaims *pascaljwt.Claims, claim Claim) error 
 				return fmt.Errorf("%w for nbf", err)
 			}
 
-			tokenClaims.Registered.NotBefore = pascaljwt.NewNumericTime(t)
+			tokenClaims.Registered.NotBefore = pascaljwt.NewNumericTime(t.Round(time.Second))
 		} else {
 			return fmt.Errorf("%w for nbf", ErrInvalidTypeForClaim)
 		}
@@ -317,7 +317,7 @@ func constructRegisteredClaim(tokenClaims *pascaljwt.Claims, claim Claim) error 
 				return fmt.Errorf("%w for iat", err)
 			}
 
-			tokenClaims.Registered.Issued = pascaljwt.NewNumericTime(t)
+			tokenClaims.Registered.Issued = pascaljwt.NewNumericTime(t.Round(time.Second))
 		} else {
 			return fmt.Errorf("%w for iat", ErrInvalidTypeForClaim)
 		}
@@ -364,7 +364,7 @@ func constructUnregisteredClaim(tokenClaims *pascaljwt.Claims, claim Claim) erro
 			return fmt.Errorf("%w for %s", err, claim.Key)
 		}
 
-		tokenClaims.Set[claim.Key] = pascaljwt.NewNumericTime(t)
+		tokenClaims.Set[claim.Key] = pascaljwt.NewNumericTime(t.Round(time.Second))
 	default:
 		return fmt.Errorf("%w: %d", ErrUnsupportedClaimType, claim.Type)
 	}
