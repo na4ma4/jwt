@@ -15,6 +15,15 @@ const (
 	RS384 = pascaljwt.RS384
 	// RS512 RSASSA-PKCS1-v1_5 with SHA-512.
 	RS512 = pascaljwt.RS512
+
+	// ES256 ECDSA using P-256 and SHA-256
+	ES256 = pascaljwt.ES256
+
+	// ES384 ECDSA using P-384 and SHA-384
+	ES384 = pascaljwt.ES384
+
+	// ES512 ECDSA using P-521 and SHA-512
+	ES512 = pascaljwt.ES512
 )
 
 // // ErrAlgorithmUnknown signals an unsupported "alg" token (for the respective method).
