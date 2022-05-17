@@ -5,20 +5,5 @@ on:
   push:
 
 jobs:
-  unit-test:
-    name: unit-test
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: ^1
-        id: go
-      - name: Set up go env
-        run: export PATH=${PATH}:`go env GOPATH`/bin
-      - name: unit-test
-        run: make test
-      - name: ci
-        run: make ci
+  unittest:
+    uses: na4ma4/actions/.github/workflows/unit-test.yml@v1
