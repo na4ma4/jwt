@@ -6,7 +6,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-//nolint:dupl // plenty of duplication here.
 var _ = Describe("Audience Slice", func() {
 	Context("Empty Claim Audience", func() {
 		asNone := jwt.AudienceSlice{}

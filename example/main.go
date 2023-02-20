@@ -9,6 +9,8 @@ import (
 )
 
 // Generate Token from authentication service.
+//
+//nolint:forbidigo // Example
 func main() {
 	// Create signer using RSA private key in PEM format (no passphrase)
 	signer, err := jwt.NewRSASignerFromFile("key.pem")

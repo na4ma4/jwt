@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
+	uuid "github.com/google/uuid"
 	pascaljwt "github.com/pascaldekloe/jwt"
-	uuid "github.com/satori/go.uuid"
 )
 
 // ErrInvalidClaimType is returned when an operation tries to return an invalid claim type.
@@ -212,7 +212,6 @@ func Reflect(key string, val interface{}) Claim {
 // Since byte/uint8 and rune/int32 are aliases, Any can't differentiate between
 // them. To minimize surprises, []byte values are treated as binary blobs, byte
 // values are treated as uint8, and runes are always treated as integers.
-//
 func Any(key string, value interface{}) Claim {
 	switch val := value.(type) {
 	case bool:
@@ -267,7 +266,7 @@ func ConstructClaimsFromSlice(claims ...Claim) (*pascaljwt.Claims, error) {
 	}
 
 	if tokenClaims.ID == "" {
-		tokenClaims.ID = uuid.Must(uuid.NewV4()).String()
+		tokenClaims.ID = uuid.NewString()
 	}
 
 	return tokenClaims, nil
@@ -277,7 +276,8 @@ func ConstructClaimsFromSlice(claims ...Claim) (*pascaljwt.Claims, error) {
 var ErrInvalidTypeForClaim = errors.New("invalid type for registered claim")
 
 // constructRegisteredClaim adds IANA registered `Claim` fields to the supplied `jwt.Claims`.
-//nolint:cyclop
+//
+//nolint:gocognit // refactoring would reduce readability.
 func constructRegisteredClaim(tokenClaims *pascaljwt.Claims, claim Claim) error {
 	switch claim.Field() {
 	case Issuer:
@@ -335,7 +335,6 @@ var ErrUnsupportedClaimType = errors.New("unsupported claim type")
 var ErrClaimFormatInvalid = errors.New("claim format is invalid")
 
 // constructRegisteredClaim adds unregistered `Claim` fields to the supplied `pascaljwt.Claims`.
-//nolint:cyclop
 func constructUnregisteredClaim(tokenClaims *pascaljwt.Claims, claim Claim) error {
 	switch claim.Type {
 	case ArrayMarshalerType, BinaryType, ByteStringType, Complex128Type, Complex64Type, DurationType,
