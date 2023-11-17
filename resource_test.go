@@ -1,9 +1,10 @@
 package jwt_test
 
 import (
+	"testing"
+
 	"github.com/na4ma4/jwt/v2"
 	"github.com/na4ma4/permbits"
-	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
 )
 
@@ -26,9 +27,11 @@ func createAfs() afero.Fs {
 	return afs
 }
 
-func createSigner() jwt.Signer {
+func createSigner(t *testing.T) jwt.Signer {
 	privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		t.Fatalf("expected error to be nil, returned '%v'", err)
+	}
 
 	return &jwt.RSASigner{
 		Algorithm:  jwt.RS256,
@@ -36,9 +39,11 @@ func createSigner() jwt.Signer {
 	}
 }
 
-func createVerifier() jwt.Verifier {
+func createVerifier(t *testing.T) jwt.Verifier {
 	publicKey, err := jwt.ParsePKCS1PublicKeyFromFileAFS(createAfs(), "cert.pem")
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		t.Fatalf("expected error to be nil, returned '%v'", err)
+	}
 
 	return &jwt.RSAVerifier{
 		Audiences: []string{"test-audience", "second-test-audience"},

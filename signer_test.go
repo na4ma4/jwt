@@ -1,231 +1,435 @@
 package jwt_test
 
 import (
+	"errors"
+	"strings"
+	"testing"
 	"time"
 
 	"github.com/na4ma4/jwt/v2"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("JWT Signer", func() {
-	var signer jwt.Signer
-	var verifier jwt.Verifier
+func expectBool(t *testing.T, name string, value, expect bool) {
+	t.Helper()
 
-	BeforeEach(func() {
-		signer = createSigner()
-		verifier = createVerifier()
-	})
+	if value != expect {
+		t.Errorf("%s: expected '%t', received '%t'", name, expect, value)
+	}
+}
 
-	It("should succeed", func() {
-		nbfTime := time.Now().UTC()
-		expTime := time.Now().Add(time.Hour).UTC()
+func expectString(t *testing.T, name string, value, expect string) {
+	t.Helper()
 
-		subject := jwt.String(jwt.Subject, "subject")
-		audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
-		notBefore := jwt.Time(jwt.NotBefore, nbfTime)
-		expiry := jwt.Time(jwt.Expires, expTime)
+	if value != expect {
+		t.Errorf("%s: expected '%s', received '%s'", name, expect, value)
+	}
+}
 
-		token, err := signer.SignClaims(subject, audience, expiry, notBefore)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+func expectStringNotEmpty(t *testing.T, name string, value string) {
+	t.Helper()
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).To(Equal("subject"))
-		Expect(result.ID).NotTo(BeEmpty())
-		Expect(result.Audience).To(ContainElement("test-audience"))
-		Expect(result.Audience).To(HaveLen(1))
-		Expect(result.Fingerprint).To(BeEmpty())
-		Expect(result.NotBefore).To(BeTemporally("~", nbfTime, time.Microsecond))
-		Expect(result.Expires).To(BeTemporally("~", expTime, time.Microsecond))
-	})
+	if len(value) == 0 {
+		t.Errorf("%s: expected not empty, received '%s'", name, value)
+	}
+}
 
-	It("should succeed even with no claims", func() {
-		token, err := signer.SignClaims()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+func expectStringEmpty(t *testing.T, name string, value string) {
+	t.Helper()
 
-		result, err := verifier.Verify(token)
-		Expect(err).To(MatchError(jwt.ErrTokenInvalidAudience))
-		Expect(result.Subject).To(BeEmpty())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.ID).To(BeEmpty())
-		Expect(result.Audience).To(BeEmpty())
-		Expect(result.Fingerprint).To(BeEmpty())
-		Expect(result.NotBefore).To(Equal(time.Time{}))
-		Expect(result.Expires).To(Equal(time.Time{}))
-	})
+	if len(value) > 0 {
+		t.Errorf("%s: expected empty, received '%s'(%d)", name, value, len(value))
+	}
+}
 
-	It("should fail with invalid type for registered claim (nbt)", func() {
-		notBefore := jwt.String(jwt.NotBefore, "not a time")
+func expectByteStringEmpty(t *testing.T, name string, value []byte) {
+	t.Helper()
 
-		token, err := signer.SignClaims(notBefore)
-		Expect(err).To(MatchError(jwt.ErrInvalidTypeForClaim))
-		Expect(token).To(BeEmpty())
-	})
+	if len(value) > 0 {
+		t.Errorf("%s: expected empty, received '%s'", name, value)
+	}
+}
 
-	It("should fail with invalid type for registered claim (exp)", func() {
-		expires := jwt.String(jwt.Expires, "not a time")
+func expectSliceEmpty(t *testing.T, name string, value []string) {
+	t.Helper()
 
-		token, err := signer.SignClaims(expires)
-		Expect(err).To(MatchError(jwt.ErrInvalidTypeForClaim))
-		Expect(token).To(BeEmpty())
-	})
+	if len(value) > 0 {
+		t.Errorf("%s: expected empty, received '%s'", name, value)
+	}
+}
 
-	It("should fail with invalid type for registered claim (iat)", func() {
-		issued := jwt.String(jwt.Issued, "not a time")
+func expectTimeVaguelyEqual(t *testing.T, name string, value, expect time.Time) {
+	t.Helper()
 
-		token, err := signer.SignClaims(issued)
-		Expect(err).To(MatchError(jwt.ErrInvalidTypeForClaim))
-		Expect(token).To(BeEmpty())
-	})
+	if expect.Unix() != value.Unix() {
+		t.Errorf("%s: expected vaguely '%s', received '%s'", name, expect.String(), value.String())
+	}
+}
 
-	It("should fail with an invalid audience", func() {
-		token, err := signer.SignClaims()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+func expectTimeZero(t *testing.T, name string, value time.Time) {
+	t.Helper()
 
-		result, err := verifier.Verify(token)
-		Expect(err).To(MatchError(jwt.ErrTokenInvalidAudience))
-		Expect(result.Audience).To(BeEmpty())
-	})
+	if !value.IsZero() {
+		t.Errorf("%s: expected time to be zero, but received '%s'", name, value.String())
+	}
+}
 
-	It("a token without an expiry should be valid (it was signed that way)", func() {
-		token, err := signer.SignClaims(
-			jwt.String(jwt.Subject, "user"),
-			jwt.Strings(jwt.Audience, []string{"test-audience"}),
-			jwt.Bool("onl", true),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+//nolint:unparam // might reuse this code or combine into something more generic.
+func expectStringElement(t *testing.T, name string, value []string, expect string) {
+	t.Helper()
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Audience).To(ContainElement("test-audience"))
-		Expect(result.Audience).To(HaveLen(1))
-	})
+	for _, v := range value {
+		if v == expect {
+			return
+		}
+	}
 
-	It("should succeed with a custom field (which is lost)", func() {
-		nbfTime := time.Now().UTC()
-		expTime := time.Now().Add(time.Hour).UTC()
+	t.Errorf("%s: element '%s' not found in slice", name, expect)
+}
 
-		subject := jwt.String(jwt.Subject, "subject")
-		audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
-		notBefore := jwt.Time(jwt.NotBefore, nbfTime)
-		expiry := jwt.Time(jwt.Expires, expTime)
-		custom := jwt.String("foo", "bar")
+func expectClaim(t *testing.T, name string, value map[string]jwt.Claim, expect jwt.Claim) {
+	t.Helper()
 
-		token, err := signer.SignClaims(subject, audience, expiry, notBefore, custom)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	for _, v := range value {
+		if v.Key == expect.Key {
+			switch v.Type { //nolint:exhaustive // unit tests
+			case jwt.StringType:
+				if v.String == expect.String {
+					return
+				}
+			case jwt.StringsType:
+				bv, bok := v.Interface.([]string)
+				ev, eok := expect.Interface.([]string)
+				if bok && eok && strings.Join(bv, ":") == strings.Join(ev, ":") {
+					return
+				}
+			case jwt.BoolType:
+				bv, bok := v.Interface.(bool)
+				ev, eok := expect.Interface.(bool)
+				if bok && eok && bv == ev {
+					return
+				}
+			default:
+				t.Errorf("unexpected claim type: %d", v.Type)
+			}
+		}
+	}
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Subject).To(Equal("subject"))
-		Expect(result.ID).NotTo(BeEmpty())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Audience).To(ContainElement("test-audience"))
-		Expect(result.Audience).To(HaveLen(1))
-		Expect(result.Fingerprint).To(BeEmpty())
-		Expect(result.NotBefore).To(BeTemporally("~", nbfTime, time.Microsecond))
-		Expect(result.Expires).To(BeTemporally("~", expTime, time.Microsecond))
+	t.Errorf("%s: claim '%s' not found in slice", name, expect.Key)
+}
 
-		Expect(result.Claims).To(ContainElement(custom))
-	})
+func expectErrMatch(t *testing.T, name string, err, expect error) {
+	t.Helper()
 
-	It("should succeed with an online field", func() {
-		nbfTime := time.Now().UTC()
-		expTime := time.Now().Add(time.Hour).UTC()
+	if !errors.Is(err, expect) {
+		t.Errorf("%s: expected err '%v' to match type '%v'", name, err, expect)
+	}
+}
 
-		subject := jwt.String(jwt.Subject, "subject")
-		audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
-		notBefore := jwt.Time(jwt.NotBefore, nbfTime)
-		expiry := jwt.Time(jwt.Expires, expTime)
-		online := jwt.Bool("onl", true)
+func TestJWTSigner_ShouldSucceed(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
 
-		token, err := signer.SignClaims(subject, audience, expiry, notBefore, online)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	nbfTime := time.Now().UTC()
+	expTime := time.Now().Add(time.Hour).UTC()
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Subject).To(Equal("subject"))
-		Expect(result.IsOnline).To(BeTrue())
-		Expect(result.ID).NotTo(BeEmpty())
-		Expect(result.Audience).To(ContainElement("test-audience"))
-		Expect(result.Audience).To(HaveLen(1))
-		Expect(result.Fingerprint).To(BeEmpty())
-		Expect(result.NotBefore).To(BeTemporally("~", nbfTime, time.Microsecond))
-		Expect(result.Expires).To(BeTemporally("~", expTime, time.Microsecond))
-	})
+	subject := jwt.String(jwt.Subject, "subject")
+	audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
+	notBefore := jwt.Time(jwt.NotBefore, nbfTime)
+	expiry := jwt.Time(jwt.Expires, expTime)
 
-	It("should succeed with an online field and fingerprint", func() {
-		nbfTime := time.Now().UTC()
-		expTime := time.Now().Add(time.Hour).UTC()
+	token, err := signer.SignClaims(subject, audience, expiry, notBefore)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
 
-		subject := jwt.String(jwt.Subject, "subject")
-		audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
-		notBefore := jwt.Time(jwt.NotBefore, nbfTime)
-		expiry := jwt.Time(jwt.Expires, expTime)
-		online := jwt.Bool("onl", true)
-		fprint := jwt.String("fpt", "fingerpainting-is-fun")
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
 
-		token, err := signer.SignClaims(subject, audience, expiry, notBefore, online, fprint)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	expectString(t, "result.Subject", result.Subject, "subject")
+	expectStringNotEmpty(t, "result.ID", result.ID)
+	expectStringElement(t, "result.Audience[test-audience]", result.Audience, "test-audience")
+	if len(result.Audience) != 1 {
+		t.Errorf("result.Audience: expected length '1', returned '%d'", len(result.Audience))
+	}
+	expectStringEmpty(t, "result.Fingerprint", result.Fingerprint)
+	expectTimeVaguelyEqual(t, "result.NotBefore", result.NotBefore, nbfTime)
+	expectTimeVaguelyEqual(t, "result.Expires", result.Expires, expTime)
+}
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Subject).To(Equal("subject"))
-		Expect(result.IsOnline).To(BeTrue())
-		Expect(result.ID).NotTo(BeEmpty())
-		Expect(result.Audience).To(ContainElement("test-audience"))
-		Expect(result.Audience).To(HaveLen(1))
-		Expect(result.Fingerprint).To(Equal("fingerpainting-is-fun"))
-		Expect(result.NotBefore).To(BeTemporally("~", nbfTime, time.Microsecond))
-		Expect(result.Expires).To(BeTemporally("~", expTime, time.Microsecond))
-	})
+func TestJWTSigner_ShouldSucceedEvenWithNoClaims(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
 
-	It("should carry through custom ID", func() {
-		id := jwt.String("jti", "ponies")
-		audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
+	token, err := signer.SignClaims()
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
 
-		token, err := signer.SignClaims(id, audience)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	result, err := verifier.Verify(token)
+	expectErrMatch(t, "jwt.ErrTokenInvalidAudience", err, jwt.ErrTokenInvalidAudience)
+	expectStringEmpty(t, "result.Subject", result.Subject)
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	expectStringEmpty(t, "result.ID", result.ID)
+	expectSliceEmpty(t, "result.Audience", result.Audience)
+	expectStringEmpty(t, "result.Fingerprint", result.Fingerprint)
+	expectTimeZero(t, "result.NotBefore", result.NotBefore)
+	expectTimeZero(t, "result.Expires", result.Expires)
+}
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Subject).To(BeEmpty())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.ID).To(Equal("ponies"))
-		Expect(result.Audience).To(ContainElement("test-audience"))
-		Expect(result.Audience).To(HaveLen(1))
-		Expect(result.Fingerprint).To(BeEmpty())
-		Expect(result.NotBefore).To(Equal(time.Time{}))
-		Expect(result.Expires).To(Equal(time.Time{}))
-	})
+func TestJWTSigner_ShouldFailWithInvalidTypeForRegisteredClaim_NBT(t *testing.T) {
+	signer := createSigner(t)
+	notBefore := jwt.String(jwt.NotBefore, "not a time")
 
-	It("allows repeat keys, but uses last specified", func() {
-		token, err := signer.SignClaims(
-			jwt.String(jwt.Subject, "subject"),
-			jwt.Strings(jwt.Audience, []string{"test-audience"}),
-			jwt.String(jwt.Subject, "new-subject"),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	token, err := signer.SignClaims(notBefore)
+	expectErrMatch(t, "jwt.ErrInvalidTypeForClaim", err, jwt.ErrInvalidTypeForClaim)
+	expectByteStringEmpty(t, "token", token)
+}
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).To(Equal("new-subject"))
-		Expect(result.ID).NotTo(BeEmpty())
-		Expect(result.Audience).To(ContainElement("test-audience"))
-		Expect(result.Audience).To(HaveLen(1))
-		Expect(result.Fingerprint).To(BeEmpty())
-		Expect(result.NotBefore).To(Equal(time.Time{}))
-		Expect(result.Expires).To(Equal(time.Time{}))
-	})
-})
+func TestJWTSigner_ShouldFailWithInvalidTypeForRegisteredClaim_EXP(t *testing.T) {
+	signer := createSigner(t)
+	expires := jwt.String(jwt.Expires, "not a time")
+
+	token, err := signer.SignClaims(expires)
+	expectErrMatch(t, "jwt.ErrInvalidTypeForClaim", err, jwt.ErrInvalidTypeForClaim)
+	expectByteStringEmpty(t, "token", token)
+}
+
+func TestJWTSigner_ShouldFailWithInvalidTypeForRegisteredClaim_IAT(t *testing.T) {
+	signer := createSigner(t)
+	issued := jwt.String(jwt.Issued, "not a time")
+
+	token, err := signer.SignClaims(issued)
+	expectErrMatch(t, "jwt.ErrInvalidTypeForClaim", err, jwt.ErrInvalidTypeForClaim)
+	expectByteStringEmpty(t, "token", token)
+}
+
+func TestJWTSigner_ShouldFailWithInvalidAudience(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
+
+	token, err := signer.SignClaims()
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
+
+	result, err := verifier.Verify(token)
+	expectErrMatch(t, "jwt.ErrTokenInvalidAudience", err, jwt.ErrTokenInvalidAudience)
+	expectSliceEmpty(t, "result.Audience", result.Audience)
+}
+
+func TestJWTSigner_ShouldSucceed_TokenWithNoExpiry(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
+
+	token, err := signer.SignClaims(
+		jwt.String(jwt.Subject, "user"),
+		jwt.Strings(jwt.Audience, []string{"test-audience"}),
+		jwt.Bool("onl", true),
+	)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
+
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectStringElement(t, "result.Audience[test-audience]", result.Audience, "test-audience")
+	if len(result.Audience) != 1 {
+		t.Errorf("result.Audience: expected length '1', returned '%d'", len(result.Audience))
+	}
+}
+
+func TestJWTSigner_ShouldSucceed_CustomField(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
+
+	nbfTime := time.Now().UTC()
+	expTime := time.Now().Add(time.Hour).UTC()
+
+	subject := jwt.String(jwt.Subject, "subject")
+	audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
+	notBefore := jwt.Time(jwt.NotBefore, nbfTime)
+	expiry := jwt.Time(jwt.Expires, expTime)
+	custom := jwt.String("foo", "bar")
+
+	token, err := signer.SignClaims(subject, audience, expiry, notBefore, custom)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
+
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectString(t, "result.Subject", result.Subject, "subject")
+	expectStringNotEmpty(t, "result.ID", result.ID)
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	expectStringElement(t, "result.Audience[test-audience]", result.Audience, "test-audience")
+	if len(result.Audience) != 1 {
+		t.Errorf("result.Audience: expected length '1', returned '%d'", len(result.Audience))
+	}
+	expectStringEmpty(t, "result.Fingerprint", result.Fingerprint)
+	expectTimeVaguelyEqual(t, "result.NotBefore", result.NotBefore, nbfTime)
+	expectTimeVaguelyEqual(t, "result.Expires", result.Expires, expTime)
+
+	expectClaim(t, "result.Claims[custom]", result.Claims, custom)
+}
+
+func TestJWTSigner_ShouldSucceed_OnlineField(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
+
+	nbfTime := time.Now().UTC()
+	expTime := time.Now().Add(time.Hour).UTC()
+
+	subject := jwt.String(jwt.Subject, "subject")
+	audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
+	notBefore := jwt.Time(jwt.NotBefore, nbfTime)
+	expiry := jwt.Time(jwt.Expires, expTime)
+	online := jwt.Bool("onl", true)
+
+	token, err := signer.SignClaims(subject, audience, expiry, notBefore, online)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
+
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectString(t, "result.Subject", result.Subject, "subject")
+	expectBool(t, "result.IsOnline", result.IsOnline, true)
+	expectStringNotEmpty(t, "result.ID", result.ID)
+	expectStringElement(t, "result.Audience[test-audience]", result.Audience, "test-audience")
+	if len(result.Audience) != 1 {
+		t.Errorf("result.Audience: expected length '1', returned '%d'", len(result.Audience))
+	}
+	expectStringEmpty(t, "result.Fingerprint", result.Fingerprint)
+	expectTimeVaguelyEqual(t, "result.NotBefore", result.NotBefore, nbfTime)
+	expectTimeVaguelyEqual(t, "result.Expires", result.Expires, expTime)
+
+	expectClaim(t, "result.Claims[onl]", result.Claims, online)
+}
+
+func TestJWTSigner_ShouldSucceed_OnlineAndFingerprint(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
+
+	nbfTime := time.Now().UTC()
+	expTime := time.Now().Add(time.Hour).UTC()
+
+	subject := jwt.String(jwt.Subject, "subject")
+	audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
+	notBefore := jwt.Time(jwt.NotBefore, nbfTime)
+	expiry := jwt.Time(jwt.Expires, expTime)
+	online := jwt.Bool("onl", true)
+	fprint := jwt.String("fpt", "fingerpainting-is-fun")
+
+	token, err := signer.SignClaims(subject, audience, expiry, notBefore, online, fprint)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
+
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectString(t, "result.Subject", result.Subject, "subject")
+	expectBool(t, "result.IsOnline", result.IsOnline, true)
+	expectStringNotEmpty(t, "result.ID", result.ID)
+	expectStringElement(t, "result.Audience", result.Audience, "test-audience")
+	if len(result.Audience) != 1 {
+		t.Errorf("result.Audience: expected length '1', returned '%d'", len(result.Audience))
+	}
+	expectString(t, "result.Fingerprint", result.Fingerprint, "fingerpainting-is-fun")
+	expectTimeVaguelyEqual(t, "result.NotBefore", result.NotBefore, nbfTime)
+	expectTimeVaguelyEqual(t, "result.Expires", result.Expires, expTime)
+}
+
+func TestJWTSigner_ShouldSucceed_CarryCustomID(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
+
+	id := jwt.String("jti", "ponies")
+	audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
+
+	token, err := signer.SignClaims(id, audience)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
+
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectStringEmpty(t, "result.Subject", result.Subject)
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	expectString(t, "result.ID", result.ID, "ponies")
+	expectStringElement(t, "result.Audience", result.Audience, "test-audience")
+	if len(result.Audience) != 1 {
+		t.Errorf("result.Audience: expected length '1', returned '%d'", len(result.Audience))
+	}
+	expectStringEmpty(t, "result.Fingerprint", result.Fingerprint)
+	expectTimeZero(t, "result.NotBefore", result.NotBefore)
+	expectTimeZero(t, "result.Expires", result.Expires)
+}
+
+func TestJWTSigner_ShouldSucceed_OnlyLastKeyUsed(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
+
+	token, err := signer.SignClaims(
+		jwt.String(jwt.Subject, "subject"),
+		jwt.Strings(jwt.Audience, []string{"test-audience"}),
+		jwt.String(jwt.Subject, "new-subject"),
+	)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
+
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	expectString(t, "result.Subject", result.Subject, "new-subject")
+	expectStringNotEmpty(t, "result.ID", result.ID)
+	expectStringElement(t, "result.Audience", result.Audience, "test-audience")
+	if len(result.Audience) != 1 {
+		t.Errorf("result.Audience: expected length '1', returned '%d'", len(result.Audience))
+	}
+	expectStringEmpty(t, "result.Fingerprint", result.Fingerprint)
+	expectTimeZero(t, "result.NotBefore", result.NotBefore)
+	expectTimeZero(t, "result.Expires", result.Expires)
+}

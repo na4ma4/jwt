@@ -1,272 +1,393 @@
 package jwt_test
 
 import (
+	"fmt"
+	"strings"
+	"testing"
 	"time"
 
 	"github.com/na4ma4/jwt/v2"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
-	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("JWT Verifier and Signer", func() {
-	var signer jwt.Signer
-	var verifier jwt.Verifier
-	var notBefore time.Time
-	var expiry time.Time
+// notBefore = time.Now().Add(-1 * time.Minute).UTC()
+// expiry = time.Now().Add(time.Hour).UTC()
 
-	BeforeEach(func() {
-		signer = createSigner()
-		verifier = createVerifier()
-		notBefore = time.Now().Add(-1 * time.Minute).UTC()
-		expiry = time.Now().Add(time.Hour).UTC()
-	})
+func TestJWTVerifier_ShouldSucceed(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
 
-	DescribeTable("should succeed",
-		func(audience string, subject string, online bool, nbf, exp time.Time) {
-			audiences := jwt.AudienceSlice{audience}
-			token, err := jwt.Sign(signer, audiences, subject, online, nbf, exp)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(token).NotTo(BeEmpty())
+	tests := []struct {
+		name, audience, subject string
+		online                  bool
+		nbf, exp                time.Time
+	}{
+		{
+			"primary audience token",
+			"test-audience", "test-subject", false, time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
+		},
+		{
+			"secondary audience token",
+			"second-test-audience", "test-subject", false, time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
+		},
+		{
+			"standard token",
+			"test-audience", "test-subject", false, time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
+		},
+		{
+			"offline with array of claims",
+			"test-audience", "test-subject", false, time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
+		},
+		{
+			"online with array of claims",
+			"test-audience", "test-subject", true, time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			audiences := jwt.AudienceSlice{tt.audience}
+			token, err := jwt.Sign(signer, audiences, tt.subject, tt.online, tt.nbf, tt.exp)
+			if err != nil {
+				t.Errorf("expected error to be nil, returned '%v'", err)
+			}
+			if len(token) == 0 {
+				t.Error("expected token not to be empty")
+			}
 
 			result, err := verifier.Verify(token)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result.ID).NotTo(BeEmpty())
-			Expect(result.Fingerprint).To(BeEmpty())
-			Expect(result.Subject).To(Equal(subject))
-			Expect(result.Audience).To(Equal(audiences))
-			Expect(result.IsOnline).To(Equal(online))
-			Expect(result.NotBefore).To(BeTemporally("~", nbf, time.Microsecond))
-			Expect(result.Expires).To(BeTemporally("~", exp, time.Microsecond))
+			if err != nil {
+				t.Errorf("expected error to be nil, returned '%v'", err)
+			}
 
-			Expect(result.Claims).To(ContainElement(jwt.String(jwt.Subject, subject)))
-			Expect(result.Claims).To(ContainElement(jwt.Bool("onl", online)))
-			Expect(result.Claims).To(ContainElement(jwt.Strings(jwt.Audience, audiences)))
-		},
-		Entry(
-			"primary audience token",
-			"test-audience", "test-subject", false, time.Now().Add(-1*time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
-		),
-		Entry(
-			"secondary audience token",
-			"second-test-audience", "test-subject", false, time.Now().Add(-1*time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
-		),
-		Entry(
-			"standard token",
-			"test-audience", "test-subject", false, time.Now().Add(-1*time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
-		),
-		Entry(
-			"offline with array of claims",
-			"test-audience", "test-subject", false, time.Now().Add(-1*time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
-		),
-		Entry(
-			"online with array of claims",
-			"test-audience", "test-subject", true, time.Now().Add(-1*time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
-		),
+			expectStringNotEmpty(t, fmt.Sprintf("%s:result.ID", tt.name), result.ID)
+			expectStringEmpty(t, fmt.Sprintf("%s:result.Fingerprint", tt.name), result.Fingerprint)
+			expectString(t, fmt.Sprintf("%s:result.Subject", tt.name), result.Subject, tt.subject)
+			expectString(t, fmt.Sprintf("%s:result.Audience", tt.name), strings.Join(result.Audience, ":"), strings.Join(audiences, ":"))
+			expectBool(t, fmt.Sprintf("%s:result.IsOnline", tt.name), result.IsOnline, tt.online)
+			expectTimeVaguelyEqual(t, fmt.Sprintf("%s:result.NotBefore", tt.name), result.NotBefore, tt.nbf)
+			expectTimeVaguelyEqual(t, fmt.Sprintf("%s:result.Expires", tt.name), result.Expires, tt.exp)
+
+			expectClaim(t, fmt.Sprintf("%s:result.Claims[sub]", tt.name), result.Claims, jwt.String(jwt.Subject, tt.subject))
+			expectClaim(t, fmt.Sprintf("%s:result.Claims[onl]", tt.name), result.Claims, jwt.Bool("onl", tt.online))
+			expectClaim(t, fmt.Sprintf("%s:result.Claims[aud]", tt.name), result.Claims, jwt.Strings(jwt.Audience, audiences))
+		})
+	}
+}
+
+func TestJWTVerifier_ShouldSucceed_MultipleAud_OneValid(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
+	notBefore := time.Now().Add(-1 * time.Minute).UTC()
+	expiry := time.Now().Add(time.Hour).UTC()
+
+	token, err := jwt.Sign(
+		signer,
+		[]string{"test-audience", "another-audience", "some-other-test-audience"},
+		"test-subject",
+		false,
+		notBefore, expiry,
 	)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
 
-	It("should succeed, multiple audiences, one valid", func() {
-		token, err := jwt.Sign(
-			signer,
-			[]string{"test-audience", "another-audience", "some-other-test-audience"},
-			"test-subject",
-			false,
-			notBefore, expiry,
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+}
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.IsOnline).To(BeFalse())
-	})
+func TestJWTVerifier_ShouldSucceed_AlgorithmRS256(t *testing.T) {
+	// signer := createSigner(t)
+	verifier := createVerifier(t)
 
-	It("should succeed, Algorithm RS256", func() {
-		privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
-		Expect(err).NotTo(HaveOccurred())
-		algSigner := &jwt.RSASigner{
-			Algorithm:  jwt.RS256,
-			PrivateKey: privateKey,
-		}
-		token, err := jwt.Sign(
-			algSigner,
-			[]string{"test-audience"},
-			"test-subject",
-			false,
-			time.Now(), time.Now().Add(time.Hour),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	algSigner := &jwt.RSASigner{
+		Algorithm:  jwt.RS256,
+		PrivateKey: privateKey,
+	}
+	token, err := jwt.Sign(
+		algSigner,
+		[]string{"test-audience"},
+		"test-subject",
+		false,
+		time.Now(), time.Now().Add(time.Hour),
+	)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).To(Equal("test-subject"))
-	})
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	expectString(t, "result.Subject", result.Subject, "test-subject")
+}
 
-	It("should succeed, Algorithm RS384", func() {
-		privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
-		Expect(err).NotTo(HaveOccurred())
-		algSigner := &jwt.RSASigner{
-			Algorithm:  jwt.RS384,
-			PrivateKey: privateKey,
-		}
-		token, err := jwt.Sign(
-			algSigner,
-			[]string{"test-audience"},
-			"test-subject",
-			false,
-			time.Now(), time.Now().Add(time.Hour),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+func TestJWTVerifier_ShouldSucceed_AlgorithmRS384(t *testing.T) {
+	// signer := createSigner(t)
+	verifier := createVerifier(t)
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).To(Equal("test-subject"))
-	})
+	privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	algSigner := &jwt.RSASigner{
+		Algorithm:  jwt.RS384,
+		PrivateKey: privateKey,
+	}
+	token, err := jwt.Sign(
+		algSigner,
+		[]string{"test-audience"},
+		"test-subject",
+		false,
+		time.Now(), time.Now().Add(time.Hour),
+	)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
 
-	It("should succeed, Algorithm RS512", func() {
-		privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
-		Expect(err).NotTo(HaveOccurred())
-		algSigner := &jwt.RSASigner{
-			Algorithm:  jwt.RS512,
-			PrivateKey: privateKey,
-		}
-		token, err := jwt.Sign(
-			algSigner,
-			[]string{"test-audience"},
-			"test-subject",
-			false,
-			time.Now(), time.Now().Add(time.Hour),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	expectString(t, "result.Subject", result.Subject, "test-subject")
+}
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).To(Equal("test-subject"))
-	})
+func TestJWTVerifier_ShouldSucceed_AlgorithmRS512(t *testing.T) {
+	// signer := createSigner(t)
+	verifier := createVerifier(t)
 
-	It("should fail, invalid algorithm HS256", func() {
-		privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
-		Expect(err).NotTo(HaveOccurred())
-		algSigner := &jwt.RSASigner{
-			Algorithm:  "HS256",
-			PrivateKey: privateKey,
-		}
-		token, err := jwt.Sign(
-			algSigner,
-			[]string{"test-audience"},
-			"test-subject",
-			false,
-			time.Now(), time.Now().Add(time.Hour),
-		)
-		Expect(err.Error()).To(ContainSubstring("jwt: algorithm \"HS256\" not in use"))
-		Expect(token).To(BeEmpty())
-	})
+	privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	algSigner := &jwt.RSASigner{
+		Algorithm:  jwt.RS512,
+		PrivateKey: privateKey,
+	}
+	token, err := jwt.Sign(
+		algSigner,
+		[]string{"test-audience"},
+		"test-subject",
+		false,
+		time.Now(), time.Now().Add(time.Hour),
+	)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
 
-	It("online token", func() {
-		token, err := jwt.Sign(
-			signer,
-			[]string{"test-audience"},
-			"test-subject",
-			true,
-			time.Now(), time.Now().Add(time.Hour),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	expectString(t, "result.Subject", result.Subject, "test-subject")
+}
 
-		result, err := verifier.Verify(token)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(result.IsOnline).To(BeTrue())
-		Expect(result.Subject).To(Equal("test-subject"))
-	})
+func TestJWTVerifier_ShouldFail_AlgorithmHS256(t *testing.T) {
+	// signer := createSigner(t)
+	// verifier := createVerifier(t)
 
-	It("audience should fail", func() {
-		token, err := jwt.Sign(
-			signer,
-			[]string{"not-audience"},
-			"test-subject",
-			false,
-			time.Now(), time.Now().Add(time.Hour),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	algSigner := &jwt.RSASigner{
+		Algorithm:  "HS256",
+		PrivateKey: privateKey,
+	}
+	token, err := jwt.Sign(
+		algSigner,
+		[]string{"test-audience"},
+		"test-subject",
+		false,
+		time.Now(), time.Now().Add(time.Hour),
+	)
+	if !strings.Contains(err.Error(), "jwt: algorithm \"HS256\" not in use") {
+		t.Errorf("expected error message '%v' to contain '%s'", err, "jwt: algorithm \"HS256\" not in use")
+	}
+	if len(token) != 0 {
+		t.Error("expected token to be empty")
+	}
+}
 
-		result, err := verifier.Verify(token)
-		Expect(err).To(Equal(jwt.ErrTokenInvalidAudience))
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).NotTo(Equal("test-subject"))
-	})
+func TestJWTVerifier_OnlineToken(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
 
-	It("token not valid yet", func() {
-		token, err := jwt.Sign(
-			signer,
-			[]string{"test-audience"},
-			"test-subject",
-			false,
-			time.Now().Add(time.Minute),
-			time.Now().Add(time.Hour),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+	token, err := jwt.Sign(
+		signer,
+		[]string{"test-audience"},
+		"test-subject",
+		true,
+		time.Now(), time.Now().Add(time.Hour),
+	)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
 
-		result, err := verifier.Verify(token)
-		Expect(err).To(Equal(jwt.ErrTokenTimeNotValid))
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).NotTo(Equal("test-subject"))
-	})
+	result, err := verifier.Verify(token)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	expectBool(t, "result.IsOnline", result.IsOnline, true)
+	expectString(t, "result.Subject", result.Subject, "test-subject")
+}
 
-	It("token expired", func() {
-		token, err := jwt.Sign(
-			signer,
-			[]string{"test-audience"},
-			"test-subject",
-			false,
-			time.Now().Add(-1*time.Hour),
-			time.Now().Add(-1*time.Minute),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).NotTo(BeEmpty())
+func TestJWTVerifier_AudienceShouldFail(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
 
-		result, err := verifier.Verify(token)
-		Expect(err).To(Equal(jwt.ErrTokenTimeNotValid))
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).NotTo(Equal("test-subject"))
-	})
+	token, err := jwt.Sign(
+		signer,
+		[]string{"not-audience"},
+		"test-subject",
+		false,
+		time.Now(), time.Now().Add(time.Hour),
+	)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
 
-	It("garbage token", func() {
-		result, err := verifier.Verify([]byte("garbage"))
-		Expect(err).To(HaveOccurred())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).NotTo(Equal("test-subject"))
-	})
+	result, err := verifier.Verify(token)
+	expectErrMatch(t, "jwt.ErrTokenInvalidAudience", err, jwt.ErrTokenInvalidAudience)
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	if strings.EqualFold(result.Subject, "test-subject") {
+		t.Errorf("%s: expected not to equal '%s', returned '%s'", "result.Subject", "test-subject", result.Subject)
+	}
+}
 
-	It("valid jwt structure, garbage token", func() {
-		result, err := verifier.Verify([]byte("Z2FyYmFnZQ==.Z2FyYmFnZQ==.Z2FyYmFnZQ=="))
-		Expect(err).To(HaveOccurred())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).NotTo(Equal("test-subject"))
-	})
+func TestJWTVerifier_NotValidYet(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
 
-	It("valid jwt structure, valid json, garbage token", func() {
-		result, err := verifier.Verify([]byte("e30=.e30=.e30="))
-		Expect(err).To(HaveOccurred())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).NotTo(Equal("test-subject"))
-	})
+	token, err := jwt.Sign(
+		signer,
+		[]string{"test-audience"},
+		"test-subject",
+		false,
+		time.Now().Add(time.Minute),
+		time.Now().Add(time.Hour),
+	)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
 
-	It("valid jwt, invalid signing", func() {
-		result, err := verifier.Verify([]byte(
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
-				"eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6I" +
-				"kpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ." +
-				"SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"))
-		Expect(err).To(HaveOccurred())
-		Expect(result.IsOnline).To(BeFalse())
-		Expect(result.Subject).NotTo(Equal("test-subject"))
-	})
-})
+	result, err := verifier.Verify(token)
+	expectErrMatch(t, "jwt.ErrTokenTimeNotValid", err, jwt.ErrTokenTimeNotValid)
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	if strings.EqualFold(result.Subject, "test-subject") {
+		t.Errorf("%s: expected not to equal '%s', returned '%s'", "result.Subject", "test-subject", result.Subject)
+	}
+}
+
+func TestJWTVerifier_Expired(t *testing.T) {
+	signer := createSigner(t)
+	verifier := createVerifier(t)
+
+	token, err := jwt.Sign(
+		signer,
+		[]string{"test-audience"},
+		"test-subject",
+		false,
+		time.Now().Add(-1*time.Hour),
+		time.Now().Add(-1*time.Minute),
+	)
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if len(token) == 0 {
+		t.Error("expected token not to be empty")
+	}
+
+	result, err := verifier.Verify(token)
+	expectErrMatch(t, "jwt.ErrTokenTimeNotValid", err, jwt.ErrTokenTimeNotValid)
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	if strings.EqualFold(result.Subject, "test-subject") {
+		t.Errorf("%s: expected not to equal '%s', returned '%s'", "result.Subject", "test-subject", result.Subject)
+	}
+}
+
+func TestJWTVerifier_GarbageToken(t *testing.T) {
+	verifier := createVerifier(t)
+
+	result, err := verifier.Verify([]byte("garbage"))
+	if err == nil {
+		t.Error("expected error to be returned, but error returned nil")
+	}
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	if strings.EqualFold(result.Subject, "test-subject") {
+		t.Errorf("%s: expected not to equal '%s', returned '%s'", "result.Subject", "test-subject", result.Subject)
+	}
+}
+
+func TestJWTVerifier_ValidStructureGarbageToken(t *testing.T) {
+	verifier := createVerifier(t)
+
+	result, err := verifier.Verify([]byte("Z2FyYmFnZQ==.Z2FyYmFnZQ==.Z2FyYmFnZQ=="))
+	if err == nil {
+		t.Error("expected error to be returned, but error returned nil")
+	}
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	if strings.EqualFold(result.Subject, "test-subject") {
+		t.Errorf("%s: expected not to equal '%s', returned '%s'", "result.Subject", "test-subject", result.Subject)
+	}
+}
+
+func TestJWTVerifier_ValidStructureValidJSONGarbageToken(t *testing.T) {
+	verifier := createVerifier(t)
+
+	result, err := verifier.Verify([]byte("e30=.e30=.e30="))
+	if err == nil {
+		t.Error("expected error to be returned, but error returned nil")
+	}
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	if strings.EqualFold(result.Subject, "test-subject") {
+		t.Errorf("%s: expected not to equal '%s', returned '%s'", "result.Subject", "test-subject", result.Subject)
+	}
+}
+
+func TestJWTVerifier_ValidJWTInvalidSigning(t *testing.T) {
+	verifier := createVerifier(t)
+
+	result, err := verifier.Verify([]byte(
+		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
+			"eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6I" +
+			"kpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ." +
+			"SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"))
+	if err == nil {
+		t.Error("expected error to be returned, but error returned nil")
+	}
+	expectBool(t, "result.IsOnline", result.IsOnline, false)
+	if strings.EqualFold(result.Subject, "test-subject") {
+		t.Errorf("%s: expected not to equal '%s', returned '%s'", "result.Subject", "test-subject", result.Subject)
+	}
+}
