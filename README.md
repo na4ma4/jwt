@@ -1,4 +1,4 @@
-# koshatul/jwt
+# jwt
 
 [![ci](https://github.com/na4ma4/jwt/actions/workflows/ci.yml/badge.svg)](https://github.com/na4ma4/jwt/actions/workflows/ci.yml)
 [![GoDoc](https://godoc.org/github.com/na4ma4/jwt/?status.svg)](https://godoc.org/github.com/na4ma4/jwt)
@@ -23,7 +23,7 @@ import (
     "log"
     "time"
 
-    "github.com/koshatul/jwt"
+    "github.com/na4ma4/jwt"
 )
 
 func main() {
