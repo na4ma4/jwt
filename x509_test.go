@@ -1,55 +1,89 @@
 package jwt_test
 
 import (
-	"crypto/rsa"
 	"encoding/asn1"
 	"errors"
 	"os"
+	"reflect"
+	"strings"
+	"testing"
 
 	"github.com/na4ma4/jwt/v2"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("x509 File Operations", func() {
-	It("should succeed, public key from afs", func() {
-		publicKey, err := jwt.ParsePKCS1PublicKeyFromFileAFS(createAfs(), "cert.pem")
-		Expect(err).NotTo(HaveOccurred())
-		Expect(publicKey).To(BeAssignableToTypeOf(&rsa.PublicKey{}))
-	})
+func TestX509FileOperations_Succeed_PublicKeyFromAFS(t *testing.T) {
+	publicKey, err := jwt.ParsePKCS1PublicKeyFromFileAFS(createAfs(), "cert.pem")
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if v := reflect.TypeOf(publicKey).String(); v != "*rsa.PublicKey" {
+		t.Errorf("expected publicKey to be type(%s), received type(%s)", "*rsa.PublicKey", v)
+	}
+}
 
-	It("should succeed, private key from afs", func() {
-		privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
-		Expect(err).NotTo(HaveOccurred())
-		Expect(privateKey).To(BeAssignableToTypeOf(&rsa.PrivateKey{}))
-	})
+func TestX509FileOperations_Succeed_PrivateKeyFromAFS(t *testing.T) {
+	privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
+	if err != nil {
+		t.Errorf("expected error to be nil, returned '%v'", err)
+	}
+	if v := reflect.TypeOf(privateKey).String(); v != "*rsa.PrivateKey" {
+		t.Errorf("expected privateKey to be type(%s), received type(%s)", "*rsa.PrivateKey", v)
+	}
+}
 
-	It("should fail, public key from afs, invalid file", func() {
-		publicKey, err := jwt.ParsePKCS1PublicKeyFromFileAFS(createAfs(), "cert2.pem")
-		e := &os.PathError{}
-		Expect(errors.As(err, &e)).To(BeTrue())
-		Expect(e).NotTo(BeNil())
-		Expect(publicKey).To(BeNil())
-	})
+func TestX509FileOperations_Fail_PublicKeyFromAFS_InvalidFile(t *testing.T) {
+	publicKey, err := jwt.ParsePKCS1PublicKeyFromFileAFS(createAfs(), "cert2.pem")
+	if os.IsNotExist(err) {
+		t.Errorf("expected error to be of type os.PathError: %v", err)
+	}
+	if err == nil {
+		t.Error("expected error to be returned, but error returned nil")
+	}
+	if publicKey != nil {
+		t.Error("expected publicKey to be bil, but returned non-nil")
+	}
+}
 
-	It("should fail, private key from afs, invalid file", func() {
-		privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key2.pem")
-		e := &os.PathError{}
-		Expect(errors.As(err, &e)).To(BeTrue())
-		Expect(e).NotTo(BeNil())
-		Expect(privateKey).To(BeNil())
-	})
+func TestX509FileOperations_Fail_PrivateKeyFromAFS_InvalidFile(t *testing.T) {
+	privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key2.pem")
+	if os.IsNotExist(err) {
+		t.Errorf("expected error to be of type os.PathError: %v", err)
+	}
+	if err == nil {
+		t.Error("expected error to be returned, but error returned nil")
+	}
 
-	It("should fail, public key from afs, loading wrong type", func() {
-		publicKey, err := jwt.ParsePKCS1PublicKeyFromFileAFS(createAfs(), "key.pem")
-		Expect(err).To(MatchError("unable to parse certificate: x509: malformed tbs certificate"))
-		Expect(publicKey).To(BeNil())
-	})
+	if privateKey != nil {
+		t.Error("expected privateKey to be bil, but returned non-nil")
+	}
+}
 
-	//nolint:lll // long error match
-	It("should fail, private key from afs, loading wrong type", func() {
-		privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "cert.pem")
-		Expect(err).To(MatchError(asn1.StructuralError{Msg: "tags don't match (2 vs {class:0 tag:16 length:400 isCompound:true}) {optional:false explicit:false application:false private:false defaultValue:<nil> tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} int @4"}))
-		Expect(privateKey).To(BeNil())
-	})
-})
+func TestX509FileOperations_Fail_PublicKeyFromAFS_FileWrongType(t *testing.T) {
+	publicKey, err := jwt.ParsePKCS1PublicKeyFromFileAFS(createAfs(), "key.pem")
+	if !strings.Contains(err.Error(), "unable to parse certificate: x509: malformed tbs certificate") {
+		t.Errorf("expected error to contain '%s', returned '%s'", "unable to parse certificate: x509: malformed tbs certificate", err)
+	}
+	if publicKey != nil {
+		t.Error("expected publicKey to be bil, but returned non-nil")
+	}
+}
+
+func TestX509FileOperations_Fail_PrivateKeyFromAFS_FileWrongType(t *testing.T) {
+	errorMsg := "tags don't match (2 vs {class:0 tag:16 length:400 isCompound:true}) {optional:false explicit:false " +
+		"application:false private:false defaultValue:<nil> tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} int @4"
+	privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "cert.pem")
+	targetErr := &asn1.StructuralError{}
+	if errors.As(err, targetErr) {
+		if !strings.Contains(targetErr.Msg, errorMsg) {
+			t.Errorf("expected error to contain '%s', returned '%s'", errorMsg, targetErr.Msg)
+		}
+	} else {
+		t.Errorf("expected error to be of type 'asn1.StructuralError', returned '%s'", err)
+	}
+	if !strings.Contains(err.Error(), errorMsg) {
+		t.Errorf("expected error to contain '%s', returned '%s'", errorMsg, err)
+	}
+	if privateKey != nil {
+		t.Error("expected privateKey to be bil, but returned non-nil")
+	}
+}
