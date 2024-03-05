@@ -1,7 +1,6 @@
 package jwt_test
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -23,23 +22,28 @@ func TestJWTVerifier_ShouldSucceed(t *testing.T) {
 	}{
 		{
 			"primary audience token",
-			"test-audience", "test-subject", false, time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
+			"test-audience", "test-subject", false,
+			time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
 		},
 		{
 			"secondary audience token",
-			"second-test-audience", "test-subject", false, time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
+			"second-test-audience", "test-subject", false,
+			time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
 		},
 		{
 			"standard token",
-			"test-audience", "test-subject", false, time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
+			"test-audience", "test-subject", false,
+			time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
 		},
 		{
 			"offline with array of claims",
-			"test-audience", "test-subject", false, time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
+			"test-audience", "test-subject", false,
+			time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
 		},
 		{
 			"online with array of claims",
-			"test-audience", "test-subject", true, time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
+			"test-audience", "test-subject", true,
+			time.Now().Add(-1 * time.Minute).UTC(), time.Now().Add(time.Hour).UTC(),
 		},
 	}
 
@@ -59,17 +63,17 @@ func TestJWTVerifier_ShouldSucceed(t *testing.T) {
 				t.Errorf("expected error to be nil, returned '%v'", err)
 			}
 
-			expectStringNotEmpty(t, fmt.Sprintf("%s:result.ID", tt.name), result.ID)
-			expectStringEmpty(t, fmt.Sprintf("%s:result.Fingerprint", tt.name), result.Fingerprint)
-			expectString(t, fmt.Sprintf("%s:result.Subject", tt.name), result.Subject, tt.subject)
-			expectString(t, fmt.Sprintf("%s:result.Audience", tt.name), strings.Join(result.Audience, ":"), strings.Join(audiences, ":"))
-			expectBool(t, fmt.Sprintf("%s:result.IsOnline", tt.name), result.IsOnline, tt.online)
-			expectTimeVaguelyEqual(t, fmt.Sprintf("%s:result.NotBefore", tt.name), result.NotBefore, tt.nbf)
-			expectTimeVaguelyEqual(t, fmt.Sprintf("%s:result.Expires", tt.name), result.Expires, tt.exp)
+			expectStringNotEmpty(t, tt.name+":result.ID", result.ID)
+			expectStringEmpty(t, tt.name+":result.Fingerprint", result.Fingerprint)
+			expectString(t, tt.name+":result.Subject", result.Subject, tt.subject)
+			expectString(t, tt.name+":result.Audience", strings.Join(result.Audience, ":"), strings.Join(audiences, ":"))
+			expectBool(t, tt.name+":result.IsOnline", result.IsOnline, tt.online)
+			expectTimeVaguelyEqual(t, tt.name+":result.NotBefore", result.NotBefore, tt.nbf)
+			expectTimeVaguelyEqual(t, tt.name+":result.Expires", result.Expires, tt.exp)
 
-			expectClaim(t, fmt.Sprintf("%s:result.Claims[sub]", tt.name), result.Claims, jwt.String(jwt.Subject, tt.subject))
-			expectClaim(t, fmt.Sprintf("%s:result.Claims[onl]", tt.name), result.Claims, jwt.Bool("onl", tt.online))
-			expectClaim(t, fmt.Sprintf("%s:result.Claims[aud]", tt.name), result.Claims, jwt.Strings(jwt.Audience, audiences))
+			expectClaim(t, tt.name+":result.Claims[sub]", result.Claims, jwt.String(jwt.Subject, tt.subject))
+			expectClaim(t, tt.name+":result.Claims[onl]", result.Claims, jwt.Bool("onl", tt.online))
+			expectClaim(t, tt.name+":result.Claims[aud]", result.Claims, jwt.Strings(jwt.Audience, audiences))
 		})
 	}
 }

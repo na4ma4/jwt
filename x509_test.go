@@ -61,7 +61,11 @@ func TestX509FileOperations_Fail_PrivateKeyFromAFS_InvalidFile(t *testing.T) {
 func TestX509FileOperations_Fail_PublicKeyFromAFS_FileWrongType(t *testing.T) {
 	publicKey, err := jwt.ParsePKCS1PublicKeyFromFileAFS(createAfs(), "key.pem")
 	if !strings.Contains(err.Error(), "unable to parse certificate: x509: malformed tbs certificate") {
-		t.Errorf("expected error to contain '%s', returned '%s'", "unable to parse certificate: x509: malformed tbs certificate", err)
+		t.Errorf(
+			"expected error to contain '%s', returned '%s'",
+			"unable to parse certificate: x509: malformed tbs certificate",
+			err,
+		)
 	}
 	if publicKey != nil {
 		t.Error("expected publicKey to be bil, but returned non-nil")
@@ -70,7 +74,8 @@ func TestX509FileOperations_Fail_PublicKeyFromAFS_FileWrongType(t *testing.T) {
 
 func TestX509FileOperations_Fail_PrivateKeyFromAFS_FileWrongType(t *testing.T) {
 	errorMsg := "tags don't match (2 vs {class:0 tag:16 length:400 isCompound:true}) {optional:false explicit:false " +
-		"application:false private:false defaultValue:<nil> tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} int @4"
+		"application:false private:false defaultValue:<nil> tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} " +
+		"int @4"
 	privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "cert.pem")
 	targetErr := &asn1.StructuralError{}
 	if errors.As(err, targetErr) {

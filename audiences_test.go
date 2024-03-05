@@ -35,41 +35,77 @@ func TestAudienceSliceSingleClaimAudience(t *testing.T) {
 func TestAudienceSliceSingleClaimAudience_HasAny(t *testing.T) {
 	asOne := jwt.AudienceSlice{"test-audience"}
 
-	ExpectBool(t, "should match list of audiences (one-of)", asOne.HasAny([]string{"test-audience"}), true)
+	ExpectBool(t, "should match list of audiences (one-of)",
+		asOne.HasAny([]string{"test-audience"}), true,
+	)
 
-	ExpectBool(t, "should match list of audiences (valid,invalid) (one-of)", asOne.HasAny([]string{"test-audience2", "test-audience"}), true)
-	ExpectBool(t, "should match list of audiences (valid,invalid) (one-of)", asOne.HasAny([]string{"test-audience", "test-audience2"}), true)
+	ExpectBool(t, "should match list of audiences (valid,invalid) (one-of)",
+		asOne.HasAny([]string{"test-audience2", "test-audience"}), true,
+	)
+	ExpectBool(t, "should match list of audiences (valid,invalid) (one-of)",
+		asOne.HasAny([]string{"test-audience", "test-audience2"}), true,
+	)
 
-	ExpectBool(t, "should not match list of invalid audiences (one-of)", asOne.HasAny([]string{"test-audience2"}), false)
-	ExpectBool(t, "should not match list of invalid audiences (one-of)", asOne.HasAny([]string{"test-audience2", "TEST-AUDIENCE2"}), false)
+	ExpectBool(t, "should not match list of invalid audiences (one-of)",
+		asOne.HasAny([]string{"test-audience2"}), false,
+	)
+	ExpectBool(t, "should not match list of invalid audiences (one-of)",
+		asOne.HasAny([]string{"test-audience2", "TEST-AUDIENCE2"}), false,
+	)
 
-	ExpectBool(t, "should ignore case when matching list of audiences (one-of)", asOne.HasAny([]string{"TEST-AUDIENCE"}), true)
+	ExpectBool(t, "should ignore case when matching list of audiences (one-of)",
+		asOne.HasAny([]string{"TEST-AUDIENCE"}), true,
+	)
 }
 
 func TestAudienceSliceSingleClaimAudience_HasAll(t *testing.T) {
 	asOne := jwt.AudienceSlice{"test-audience"}
 
-	ExpectBool(t, "should match list of audiences (all-of)", asOne.HasAll([]string{"test-audience"}), true)
+	ExpectBool(t, "should match list of audiences (all-of)",
+		asOne.HasAll([]string{"test-audience"}), true,
+	)
 
-	ExpectBool(t, "should not match list of partially valid audiences (all-of)", asOne.HasAll([]string{"test-audience2", "test-audience"}), false)
-	ExpectBool(t, "should not match list of partially valid audiences (all-of)", asOne.HasAll([]string{"test-audience", "test-audience2"}), false)
+	ExpectBool(t, "should not match list of partially valid audiences (all-of)",
+		asOne.HasAll([]string{"test-audience2", "test-audience"}), false,
+	)
+	ExpectBool(t, "should not match list of partially valid audiences (all-of)",
+		asOne.HasAll([]string{"test-audience", "test-audience2"}), false,
+	)
 
-	ExpectBool(t, "should not match list of invalid audiences (all-of)", asOne.HasAll([]string{"test-audience2"}), false)
+	ExpectBool(t, "should not match list of invalid audiences (all-of)",
+		asOne.HasAll([]string{"test-audience2"}), false,
+	)
 
-	ExpectBool(t, "should not match list of invalid audiences (all-of)", asOne.HasAll([]string{"test-audience2", "TEST-AUDIENCE2"}), false)
+	ExpectBool(t, "should not match list of invalid audiences (all-of)",
+		asOne.HasAll([]string{"test-audience2", "TEST-AUDIENCE2"}), false,
+	)
 
-	ExpectBool(t, "should ignore case when matching list of audiences (all-of)", asOne.HasAll([]string{"TEST-AUDIENCE"}), true)
+	ExpectBool(t, "should ignore case when matching list of audiences (all-of)",
+		asOne.HasAll([]string{"TEST-AUDIENCE"}), true,
+	)
 }
 
 func TestAudienceSliceSingleClaimAudience_HasOnly(t *testing.T) {
 	asOne := jwt.AudienceSlice{"test-audience"}
 
-	ExpectBool(t, "should match list of matching audiences (only)", asOne.HasOnly([]string{"test-audience"}), true)
-	ExpectBool(t, "should not match list of audiences containing one valid (invalid,valid) (only)", asOne.HasOnly([]string{"test-audience2", "test-audience"}), false)
-	ExpectBool(t, "should not match list of audiences containing one valid (valid,invalid) (only)", asOne.HasOnly([]string{"test-audience", "test-audience2"}), false)
-	ExpectBool(t, "should not match list of invalid audiences (only)", asOne.HasOnly([]string{"test-audience2"}), false)
-	ExpectBool(t, "should not match list of invalid audiences (only)", asOne.HasOnly([]string{"test-audience2", "TEST-AUDIENCE2"}), false)
-	ExpectBool(t, "should ignore case when matching list of audiences (only)", asOne.HasOnly([]string{"TEST-AUDIENCE"}), true)
+	ExpectBool(t, "should match list of matching audiences (only)",
+		asOne.HasOnly([]string{"test-audience"}), true,
+	)
+	ExpectBool(t, "should not match list of audiences containing one valid (invalid,valid) (only)",
+		asOne.HasOnly([]string{"test-audience2", "test-audience"}), false,
+	)
+	ExpectBool(t, "should not match list of audiences containing one valid (valid,invalid) (only)",
+		asOne.HasOnly([]string{"test-audience", "test-audience2"}), false,
+	)
+	ExpectBool(t, "should not match list of invalid audiences (only)",
+		asOne.HasOnly([]string{"test-audience2"}), false,
+	)
+	ExpectBool(t, "should not match list of invalid audiences (only)",
+		asOne.HasOnly([]string{"test-audience2", "TEST-AUDIENCE2"}), false,
+	)
+	ExpectBool(t, "should ignore case when matching list of audiences (only)",
+		asOne.HasOnly([]string{"TEST-AUDIENCE"}), true,
+	)
 }
 
 func TestAudienceSliceMultipleClaimAudience(t *testing.T) {
@@ -84,49 +120,105 @@ func TestAudienceSliceMultipleClaimAudience(t *testing.T) {
 func TestAudienceSliceMultipleClaimAudience_HasAny(t *testing.T) {
 	asMany := jwt.AudienceSlice{"test-audience", "2nd-test-audience", "3rd-test-audience"}
 
-	ExpectBool(t, "should match list of audiences (one-of)", asMany.HasAny([]string{"test-audience"}), true)
-	ExpectBool(t, "should match list of audiences (invalid,valid) (one-of)", asMany.HasAny([]string{"test-audience2", "test-audience"}), true)
-	ExpectBool(t, "should match list of audiences (valid,invalid) (one-of)", asMany.HasAny([]string{"test-audience", "test-audience2"}), true)
-	ExpectBool(t, "should not match list of invalid audiences (one-of)", asMany.HasAny([]string{"test-audience2"}), false)
-	ExpectBool(t, "should not match list of invalid audiences (one-of)", asMany.HasAny([]string{"test-audience2", "TEST-AUDIENCE2"}), false)
-	ExpectBool(t, "should ignore case when matching list of audiences (one-of)", asMany.HasAny([]string{"TEST-AUDIENCE"}), true)
+	ExpectBool(t, "should match list of audiences (one-of)",
+		asMany.HasAny([]string{"test-audience"}), true,
+	)
+	ExpectBool(t, "should match list of audiences (invalid,valid) (one-of)",
+		asMany.HasAny([]string{"test-audience2", "test-audience"}), true,
+	)
+	ExpectBool(t, "should match list of audiences (valid,invalid) (one-of)",
+		asMany.HasAny([]string{"test-audience", "test-audience2"}), true,
+	)
+	ExpectBool(t, "should not match list of invalid audiences (one-of)",
+		asMany.HasAny([]string{"test-audience2"}), false,
+	)
+	ExpectBool(t, "should not match list of invalid audiences (one-of)",
+		asMany.HasAny([]string{"test-audience2", "TEST-AUDIENCE2"}), false,
+	)
+	ExpectBool(t, "should ignore case when matching list of audiences (one-of)",
+		asMany.HasAny([]string{"TEST-AUDIENCE"}), true,
+	)
 }
 
 func TestAudienceSliceMultipleClaimAudience_HasAll(t *testing.T) {
 	asMany := jwt.AudienceSlice{"test-audience", "2nd-test-audience", "3rd-test-audience"}
 
-	ExpectBool(t, "should match list of matching audiences (all-of)", asMany.HasAll([]string{"test-audience"}), true)
-	ExpectBool(t, "should match list of matching audiences (all-of)", asMany.HasAll([]string{"test-audience", "2nd-test-audience"}), true)
-	ExpectBool(t, "should match list of matching audiences (all-of)", asMany.HasAll([]string{"test-audience", "3rd-test-audience"}), true)
-	ExpectBool(t, "should match list of matching audiences (all-of)", asMany.HasAll([]string{"test-audience", "2nd-test-audience", "3rd-test-audience"}), true)
+	ExpectBool(t, "should match list of matching audiences (all-of)",
+		asMany.HasAll([]string{"test-audience"}), true,
+	)
+	ExpectBool(t, "should match list of matching audiences (all-of)",
+		asMany.HasAll([]string{"test-audience", "2nd-test-audience"}), true,
+	)
+	ExpectBool(t, "should match list of matching audiences (all-of)",
+		asMany.HasAll([]string{"test-audience", "3rd-test-audience"}), true,
+	)
+	ExpectBool(t, "should match list of matching audiences (all-of)",
+		asMany.HasAll([]string{"test-audience", "2nd-test-audience", "3rd-test-audience"}), true,
+	)
 
-	ExpectBool(t, "should not match list of audiences combining valid and invalid (all-of)", asMany.HasAll([]string{"test-audience2", "test-audience"}), false)
-	ExpectBool(t, "should not match list of audiences combining valid and invalid (all-of)", asMany.HasAll([]string{"test-audience", "test-audience2"}), false)
+	ExpectBool(t, "should not match list of audiences combining valid and invalid (all-of)",
+		asMany.HasAll([]string{"test-audience2", "test-audience"}), false,
+	)
+	ExpectBool(t, "should not match list of audiences combining valid and invalid (all-of)",
+		asMany.HasAll([]string{"test-audience", "test-audience2"}), false,
+	)
 
-	ExpectBool(t, "should not match list of invalid audiences (all-of)", asMany.HasAll([]string{"test-audience2"}), false)
-	ExpectBool(t, "should not match list of invalid audiences (all-of)", asMany.HasAll([]string{"test-audience2", "TEST-AUDIENCE2"}), false)
+	ExpectBool(t, "should not match list of invalid audiences (all-of)",
+		asMany.HasAll([]string{"test-audience2"}), false,
+	)
+	ExpectBool(t, "should not match list of invalid audiences (all-of)",
+		asMany.HasAll([]string{"test-audience2", "TEST-AUDIENCE2"}), false,
+	)
 
-	ExpectBool(t, "should ignore case when matching list of audiences (all-of)", asMany.HasAll([]string{"TEST-AUDIENCE"}), true)
+	ExpectBool(t, "should ignore case when matching list of audiences (all-of)",
+		asMany.HasAll([]string{"TEST-AUDIENCE"}), true,
+	)
 }
 
 func TestAudienceSliceMultipleClaimAudience_HasOnly(t *testing.T) {
 	asMany := jwt.AudienceSlice{"test-audience", "2nd-test-audience", "3rd-test-audience"}
 
-	ExpectBool(t, "should match list of matching audiences (only)", asMany.HasOnly([]string{"test-audience", "2nd-test-audience", "3rd-test-audience"}), true)
+	ExpectBool(t, "should match list of matching audiences (only)",
+		asMany.HasOnly([]string{"test-audience", "2nd-test-audience", "3rd-test-audience"}), true,
+	)
 
-	ExpectBool(t, "should not match incomplete list of matching audiences (only)", asMany.Has("test-audience"), true)
-	ExpectBool(t, "should not match incomplete list of matching audiences (only)", asMany.HasOnly([]string{"test-audience"}), false)
-	ExpectBool(t, "should not match incomplete list of matching audiences (only)", asMany.HasOnly([]string{"test-audience", "2nd-test-audience"}), false)
-	ExpectBool(t, "should not match incomplete list of matching audiences (only)", asMany.HasOnly([]string{"test-audience", "3rd-test-audience"}), false)
+	ExpectBool(t, "should not match incomplete list of matching audiences (only)",
+		asMany.Has("test-audience"), true,
+	)
+	ExpectBool(t, "should not match incomplete list of matching audiences (only)",
+		asMany.HasOnly([]string{"test-audience"}), false,
+	)
+	ExpectBool(t, "should not match incomplete list of matching audiences (only)",
+		asMany.HasOnly([]string{"test-audience", "2nd-test-audience"}), false,
+	)
+	ExpectBool(t, "should not match incomplete list of matching audiences (only)",
+		asMany.HasOnly([]string{"test-audience", "3rd-test-audience"}), false,
+	)
 
-	ExpectBool(t, "should not match list of audiences containing one valid (only)", asMany.HasOnly([]string{"test-audience2", "test-audience"}), false)
-	ExpectBool(t, "should not match list of audiences containing one valid (only)", asMany.HasOnly([]string{"test-audience", "test-audience2"}), false)
+	ExpectBool(t, "should not match list of audiences containing one valid (only)",
+		asMany.HasOnly([]string{"test-audience2", "test-audience"}), false,
+	)
+	ExpectBool(t, "should not match list of audiences containing one valid (only)",
+		asMany.HasOnly([]string{"test-audience", "test-audience2"}), false,
+	)
 
-	ExpectBool(t, "should not match list of invalid audiences (only)", asMany.HasOnly([]string{"test-audience2"}), false)
-	ExpectBool(t, "should not match list of invalid audiences (only)", asMany.HasOnly([]string{"test-audience2", "TEST-AUDIENCE2"}), false)
+	ExpectBool(t, "should not match list of invalid audiences (only)",
+		asMany.HasOnly([]string{"test-audience2"}), false,
+	)
+	ExpectBool(t, "should not match list of invalid audiences (only)",
+		asMany.HasOnly([]string{"test-audience2", "TEST-AUDIENCE2"}), false,
+	)
 
-	ExpectBool(t, "should ignore case when matching list of audiences (only)", asMany.HasOnly([]string{"TEST-AUDIENCE", "2ND-TEST-AUDIENCE", "3rd-test-audience"}), true)
-	ExpectBool(t, "should ignore case when matching list of audiences (only)", asMany.HasOnly([]string{"TEST-AUDIENCE", "2ND-TEST-AUDIENCE", "3rd-test-audience"}), true)
-	ExpectBool(t, "should ignore case when matching list of audiences (only)", asMany.HasOnly([]string{"test-audience", "2ND-TEST-AUDIENCE", "3rd-test-audience"}), true)
-	ExpectBool(t, "should ignore case when matching list of audiences (only)", asMany.HasOnly([]string{"TEST-AUDIENCE", "2nd-test-audience", "3rd-test-audience"}), true)
+	ExpectBool(t, "should ignore case when matching list of audiences (only)",
+		asMany.HasOnly([]string{"TEST-AUDIENCE", "2ND-TEST-AUDIENCE", "3rd-test-audience"}), true,
+	)
+	ExpectBool(t, "should ignore case when matching list of audiences (only)",
+		asMany.HasOnly([]string{"TEST-AUDIENCE", "2ND-TEST-AUDIENCE", "3rd-test-audience"}), true,
+	)
+	ExpectBool(t, "should ignore case when matching list of audiences (only)",
+		asMany.HasOnly([]string{"test-audience", "2ND-TEST-AUDIENCE", "3rd-test-audience"}), true,
+	)
+	ExpectBool(t, "should ignore case when matching list of audiences (only)",
+		asMany.HasOnly([]string{"TEST-AUDIENCE", "2nd-test-audience", "3rd-test-audience"}), true,
+	)
 }

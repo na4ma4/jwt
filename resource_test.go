@@ -3,8 +3,8 @@ package jwt_test
 import (
 	"testing"
 
+	"github.com/na4ma4/go-permbits"
 	"github.com/na4ma4/jwt/v2"
-	"github.com/na4ma4/permbits"
 	"github.com/spf13/afero"
 )
 
