@@ -1,7 +1,7 @@
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/na4ma4/go-permbits v0.4.0 h1:0+oD8hXc7+1FBEx4sGcnQb+3c3ODdjL6sXgz3MSXGSs=
-github.com/na4ma4/go-permbits v0.4.0/go.mod h1:zOAErdXXC0T5YbVFtWAmIAZJCQe9738v2SIXRJDKpdc=
+github.com/na4ma4/go-permbits v0.5.1 h1:bC8ZV5Oysbcia7tMo7pgX19RGjuD4ZRF+p8dLxXk1y4=
+github.com/na4ma4/go-permbits v0.5.1/go.mod h1:iOOrz6HQbNi5liXxRp8PfiF7geywq1CYYJCKmcbRgTI=
 github.com/pascaldekloe/jwt v1.12.0 h1:imQSkPOtAIBAXoKKjL9ZVJuF/rVqJ+ntiLGpLyeqMUQ=
 github.com/pascaldekloe/jwt v1.12.0/go.mod h1:LiIl7EwaglmH1hWThd/AmydNCnHf/mmfluBlNqHbk8U=
 github.com/spf13/afero v1.11.0 h1:WJQKhtpdm3v2IzqG8VMqrr6Rf3UYpEF239Jy9wNepM8=
