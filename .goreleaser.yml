@@ -1,13 +1,18 @@
+version: 2
+
 project_name: jwt
-build:
-  skip: true
+
+builds: []
+
 release:
-  github:
   prerelease: auto
+
 checksum:
   name_template: 'checksums.txt'
+
 snapshot:
   name_template: "{{ .Tag }}-next"
+
 changelog:
   sort: asc
   filters:

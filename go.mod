@@ -1,8 +1,8 @@
 module github.com/na4ma4/jwt/v2
 
-go 1.21
+go 1.22.2
 
-toolchain go1.22.0
+toolchain go1.22.2
 
 require (
 	github.com/google/uuid v1.6.0
