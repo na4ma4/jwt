@@ -2,13 +2,9 @@ module github.com/na4ma4/jwt/magefiles
 
 go 1.22.2
 
-toolchain go1.22.2
-
 require (
 	github.com/dosquad/mage v0.1.23
 	github.com/magefile/mage v1.15.0
-	github.com/na4ma4/go-permbits v0.5.1
-	github.com/princjef/mageutil v1.0.0
 )
 
 require (
@@ -22,6 +18,8 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/na4ma4/go-permbits v0.5.1 // indirect
+	github.com/princjef/mageutil v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
