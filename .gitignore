@@ -1,4 +1,4 @@
-/.makefiles/
+/.makefiles
 /.vscode
-/artifacts/
 /artifacts
+/dist

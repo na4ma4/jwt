@@ -2,7 +2,8 @@ version: 2
 
 project_name: jwt
 
-builds: []
+builds:
+  - skip: true
 
 release:
   prerelease: auto
