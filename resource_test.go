@@ -28,6 +28,8 @@ func createAfs() afero.Fs {
 }
 
 func createSigner(t *testing.T) jwt.Signer {
+	t.Helper()
+
 	privateKey, err := jwt.ParsePKCS1PrivateKeyFromFileAFS(createAfs(), "key.pem")
 	if err != nil {
 		t.Fatalf("expected error to be nil, returned '%v'", err)
@@ -40,6 +42,8 @@ func createSigner(t *testing.T) jwt.Signer {
 }
 
 func createVerifier(t *testing.T) jwt.Verifier {
+	t.Helper()
+
 	publicKey, err := jwt.ParsePKCS1PublicKeyFromFileAFS(createAfs(), "cert.pem")
 	if err != nil {
 		t.Fatalf("expected error to be nil, returned '%v'", err)
