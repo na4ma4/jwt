@@ -1,6 +1,7 @@
 package jwt_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -137,7 +138,7 @@ func TestJWTSigner_ShouldSucceed(t *testing.T) {
 	notBefore := jwt.Time(jwt.NotBefore, nbfTime)
 	expiry := jwt.Time(jwt.Expires, expTime)
 
-	token, err := signer.SignClaims(subject, audience, expiry, notBefore)
+	token, err := signer.SignClaims(context.TODO(), subject, audience, expiry, notBefore)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -145,7 +146,7 @@ func TestJWTSigner_ShouldSucceed(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -166,7 +167,7 @@ func TestJWTSigner_ShouldSucceedEvenWithNoClaims(t *testing.T) {
 	signer := createSigner(t)
 	verifier := createVerifier(t)
 
-	token, err := signer.SignClaims()
+	token, err := signer.SignClaims(context.TODO())
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -174,7 +175,7 @@ func TestJWTSigner_ShouldSucceedEvenWithNoClaims(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	expectErrMatch(t, "jwt.ErrTokenInvalidAudience", err, jwt.ErrTokenInvalidAudience)
 	expectStringEmpty(t, "result.Subject", result.Subject)
 	expectBool(t, "result.IsOnline", result.IsOnline, false)
@@ -189,7 +190,7 @@ func TestJWTSigner_ShouldFailWithInvalidTypeForRegisteredClaim_NBT(t *testing.T)
 	signer := createSigner(t)
 	notBefore := jwt.String(jwt.NotBefore, "not a time")
 
-	token, err := signer.SignClaims(notBefore)
+	token, err := signer.SignClaims(context.TODO(), notBefore)
 	expectErrMatch(t, "jwt.ErrInvalidTypeForClaim", err, jwt.ErrInvalidTypeForClaim)
 	expectByteStringEmpty(t, "token", token)
 }
@@ -198,7 +199,7 @@ func TestJWTSigner_ShouldFailWithInvalidTypeForRegisteredClaim_EXP(t *testing.T)
 	signer := createSigner(t)
 	expires := jwt.String(jwt.Expires, "not a time")
 
-	token, err := signer.SignClaims(expires)
+	token, err := signer.SignClaims(context.TODO(), expires)
 	expectErrMatch(t, "jwt.ErrInvalidTypeForClaim", err, jwt.ErrInvalidTypeForClaim)
 	expectByteStringEmpty(t, "token", token)
 }
@@ -207,7 +208,7 @@ func TestJWTSigner_ShouldFailWithInvalidTypeForRegisteredClaim_IAT(t *testing.T)
 	signer := createSigner(t)
 	issued := jwt.String(jwt.Issued, "not a time")
 
-	token, err := signer.SignClaims(issued)
+	token, err := signer.SignClaims(context.TODO(), issued)
 	expectErrMatch(t, "jwt.ErrInvalidTypeForClaim", err, jwt.ErrInvalidTypeForClaim)
 	expectByteStringEmpty(t, "token", token)
 }
@@ -216,7 +217,7 @@ func TestJWTSigner_ShouldFailWithInvalidAudience(t *testing.T) {
 	signer := createSigner(t)
 	verifier := createVerifier(t)
 
-	token, err := signer.SignClaims()
+	token, err := signer.SignClaims(context.TODO())
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -224,7 +225,7 @@ func TestJWTSigner_ShouldFailWithInvalidAudience(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	expectErrMatch(t, "jwt.ErrTokenInvalidAudience", err, jwt.ErrTokenInvalidAudience)
 	expectSliceEmpty(t, "result.Audience", result.Audience)
 }
@@ -233,7 +234,7 @@ func TestJWTSigner_ShouldSucceed_TokenWithNoExpiry(t *testing.T) {
 	signer := createSigner(t)
 	verifier := createVerifier(t)
 
-	token, err := signer.SignClaims(
+	token, err := signer.SignClaims(context.TODO(),
 		jwt.String(jwt.Subject, "user"),
 		jwt.Strings(jwt.Audience, []string{"test-audience"}),
 		jwt.Bool("onl", true),
@@ -245,7 +246,7 @@ func TestJWTSigner_ShouldSucceed_TokenWithNoExpiry(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -268,7 +269,7 @@ func TestJWTSigner_ShouldSucceed_CustomField(t *testing.T) {
 	expiry := jwt.Time(jwt.Expires, expTime)
 	custom := jwt.String("foo", "bar")
 
-	token, err := signer.SignClaims(subject, audience, expiry, notBefore, custom)
+	token, err := signer.SignClaims(context.TODO(), subject, audience, expiry, notBefore, custom)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -276,7 +277,7 @@ func TestJWTSigner_ShouldSucceed_CustomField(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -307,7 +308,7 @@ func TestJWTSigner_ShouldSucceed_OnlineField(t *testing.T) {
 	expiry := jwt.Time(jwt.Expires, expTime)
 	online := jwt.Bool("onl", true)
 
-	token, err := signer.SignClaims(subject, audience, expiry, notBefore, online)
+	token, err := signer.SignClaims(context.TODO(), subject, audience, expiry, notBefore, online)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -315,7 +316,7 @@ func TestJWTSigner_ShouldSucceed_OnlineField(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -347,7 +348,7 @@ func TestJWTSigner_ShouldSucceed_OnlineAndFingerprint(t *testing.T) {
 	online := jwt.Bool("onl", true)
 	fprint := jwt.String("fpt", "fingerpainting-is-fun")
 
-	token, err := signer.SignClaims(subject, audience, expiry, notBefore, online, fprint)
+	token, err := signer.SignClaims(context.TODO(), subject, audience, expiry, notBefore, online, fprint)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -355,7 +356,7 @@ func TestJWTSigner_ShouldSucceed_OnlineAndFingerprint(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -378,7 +379,7 @@ func TestJWTSigner_ShouldSucceed_CarryCustomID(t *testing.T) {
 	id := jwt.String("jti", "ponies")
 	audience := jwt.Strings(jwt.Audience, []string{"test-audience"})
 
-	token, err := signer.SignClaims(id, audience)
+	token, err := signer.SignClaims(context.TODO(), id, audience)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -386,7 +387,7 @@ func TestJWTSigner_ShouldSucceed_CarryCustomID(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -406,7 +407,7 @@ func TestJWTSigner_ShouldSucceed_OnlyLastKeyUsed(t *testing.T) {
 	signer := createSigner(t)
 	verifier := createVerifier(t)
 
-	token, err := signer.SignClaims(
+	token, err := signer.SignClaims(context.TODO(),
 		jwt.String(jwt.Subject, "subject"),
 		jwt.Strings(jwt.Audience, []string{"test-audience"}),
 		jwt.String(jwt.Subject, "new-subject"),
@@ -418,7 +419,7 @@ func TestJWTSigner_ShouldSucceed_OnlyLastKeyUsed(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}

@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"context"
 	"crypto/rsa"
 	"errors"
 	"fmt"
@@ -32,7 +33,7 @@ type VerifyResult struct {
 // Verifier takes a token and returns the subject if it is valid, or an error if it is not.
 type Verifier interface {
 	// Verify processes a supplied token
-	Verify(token []byte) (VerifyResult, error)
+	Verify(ctx context.Context, token []byte) (VerifyResult, error)
 }
 
 // RSAVerifier implements the `Verifier` interface and tests a token signed with RSA public/private keys.
@@ -96,7 +97,7 @@ func (v *RSAVerifier) getClaimMapFromClaims(claims *pascaljwt.Claims) (map[strin
 
 // Verify takes the token and checks it's signature against the RSA public key,
 // and the audience, notbefore and expires validity.
-func (v *RSAVerifier) Verify(token []byte) (VerifyResult, error) {
+func (v *RSAVerifier) Verify(_ context.Context, token []byte) (VerifyResult, error) {
 	checkTime := time.Now()
 	result := VerifyResult{}
 

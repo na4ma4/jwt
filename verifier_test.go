@@ -1,6 +1,7 @@
 package jwt_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -50,7 +51,8 @@ func TestJWTVerifier_ShouldSucceed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			audiences := jwt.AudienceSlice{tt.audience}
-			token, err := jwt.Sign(signer, audiences, tt.subject, tt.online, tt.nbf, tt.exp)
+			token, err := jwt.Sign(
+				context.TODO(), signer, audiences, tt.subject, tt.online, tt.nbf, tt.exp)
 			if err != nil {
 				t.Errorf("expected error to be nil, returned '%v'", err)
 			}
@@ -58,7 +60,7 @@ func TestJWTVerifier_ShouldSucceed(t *testing.T) {
 				t.Error("expected token not to be empty")
 			}
 
-			result, err := verifier.Verify(token)
+			result, err := verifier.Verify(context.TODO(), token)
 			if err != nil {
 				t.Errorf("expected error to be nil, returned '%v'", err)
 			}
@@ -85,6 +87,7 @@ func TestJWTVerifier_ShouldSucceed_MultipleAud_OneValid(t *testing.T) {
 	expiry := time.Now().Add(time.Hour).UTC()
 
 	token, err := jwt.Sign(
+		context.TODO(),
 		signer,
 		[]string{"test-audience", "another-audience", "some-other-test-audience"},
 		"test-subject",
@@ -98,7 +101,7 @@ func TestJWTVerifier_ShouldSucceed_MultipleAud_OneValid(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -118,6 +121,7 @@ func TestJWTVerifier_ShouldSucceed_AlgorithmRS256(t *testing.T) {
 		PrivateKey: privateKey,
 	}
 	token, err := jwt.Sign(
+		context.TODO(),
 		algSigner,
 		[]string{"test-audience"},
 		"test-subject",
@@ -131,7 +135,7 @@ func TestJWTVerifier_ShouldSucceed_AlgorithmRS256(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -152,6 +156,7 @@ func TestJWTVerifier_ShouldSucceed_AlgorithmRS384(t *testing.T) {
 		PrivateKey: privateKey,
 	}
 	token, err := jwt.Sign(
+		context.TODO(),
 		algSigner,
 		[]string{"test-audience"},
 		"test-subject",
@@ -165,7 +170,7 @@ func TestJWTVerifier_ShouldSucceed_AlgorithmRS384(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -186,6 +191,7 @@ func TestJWTVerifier_ShouldSucceed_AlgorithmRS512(t *testing.T) {
 		PrivateKey: privateKey,
 	}
 	token, err := jwt.Sign(
+		context.TODO(),
 		algSigner,
 		[]string{"test-audience"},
 		"test-subject",
@@ -199,7 +205,7 @@ func TestJWTVerifier_ShouldSucceed_AlgorithmRS512(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -220,6 +226,7 @@ func TestJWTVerifier_ShouldFail_AlgorithmHS256(t *testing.T) {
 		PrivateKey: privateKey,
 	}
 	token, err := jwt.Sign(
+		context.TODO(),
 		algSigner,
 		[]string{"test-audience"},
 		"test-subject",
@@ -239,6 +246,7 @@ func TestJWTVerifier_OnlineToken(t *testing.T) {
 	verifier := createVerifier(t)
 
 	token, err := jwt.Sign(
+		context.TODO(),
 		signer,
 		[]string{"test-audience"},
 		"test-subject",
@@ -252,7 +260,7 @@ func TestJWTVerifier_OnlineToken(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	if err != nil {
 		t.Errorf("expected error to be nil, returned '%v'", err)
 	}
@@ -265,6 +273,7 @@ func TestJWTVerifier_AudienceShouldFail(t *testing.T) {
 	verifier := createVerifier(t)
 
 	token, err := jwt.Sign(
+		context.TODO(),
 		signer,
 		[]string{"not-audience"},
 		"test-subject",
@@ -278,7 +287,7 @@ func TestJWTVerifier_AudienceShouldFail(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	expectErrMatch(t, "jwt.ErrTokenInvalidAudience", err, jwt.ErrTokenInvalidAudience)
 	expectBool(t, "result.IsOnline", result.IsOnline, false)
 	if strings.EqualFold(result.Subject, "test-subject") {
@@ -291,6 +300,7 @@ func TestJWTVerifier_NotValidYet(t *testing.T) {
 	verifier := createVerifier(t)
 
 	token, err := jwt.Sign(
+		context.TODO(),
 		signer,
 		[]string{"test-audience"},
 		"test-subject",
@@ -305,7 +315,7 @@ func TestJWTVerifier_NotValidYet(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	expectErrMatch(t, "jwt.ErrTokenTimeNotValid", err, jwt.ErrTokenTimeNotValid)
 	expectBool(t, "result.IsOnline", result.IsOnline, false)
 	if strings.EqualFold(result.Subject, "test-subject") {
@@ -318,6 +328,7 @@ func TestJWTVerifier_Expired(t *testing.T) {
 	verifier := createVerifier(t)
 
 	token, err := jwt.Sign(
+		context.TODO(),
 		signer,
 		[]string{"test-audience"},
 		"test-subject",
@@ -332,7 +343,7 @@ func TestJWTVerifier_Expired(t *testing.T) {
 		t.Error("expected token not to be empty")
 	}
 
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(context.TODO(), token)
 	expectErrMatch(t, "jwt.ErrTokenTimeNotValid", err, jwt.ErrTokenTimeNotValid)
 	expectBool(t, "result.IsOnline", result.IsOnline, false)
 	if strings.EqualFold(result.Subject, "test-subject") {
@@ -343,7 +354,7 @@ func TestJWTVerifier_Expired(t *testing.T) {
 func TestJWTVerifier_GarbageToken(t *testing.T) {
 	verifier := createVerifier(t)
 
-	result, err := verifier.Verify([]byte("garbage"))
+	result, err := verifier.Verify(context.TODO(), []byte("garbage"))
 	if err == nil {
 		t.Error("expected error to be returned, but error returned nil")
 	}
@@ -356,7 +367,7 @@ func TestJWTVerifier_GarbageToken(t *testing.T) {
 func TestJWTVerifier_ValidStructureGarbageToken(t *testing.T) {
 	verifier := createVerifier(t)
 
-	result, err := verifier.Verify([]byte("Z2FyYmFnZQ==.Z2FyYmFnZQ==.Z2FyYmFnZQ=="))
+	result, err := verifier.Verify(context.TODO(), []byte("Z2FyYmFnZQ==.Z2FyYmFnZQ==.Z2FyYmFnZQ=="))
 	if err == nil {
 		t.Error("expected error to be returned, but error returned nil")
 	}
@@ -369,7 +380,7 @@ func TestJWTVerifier_ValidStructureGarbageToken(t *testing.T) {
 func TestJWTVerifier_ValidStructureValidJSONGarbageToken(t *testing.T) {
 	verifier := createVerifier(t)
 
-	result, err := verifier.Verify([]byte("e30=.e30=.e30="))
+	result, err := verifier.Verify(context.TODO(), []byte("e30=.e30=.e30="))
 	if err == nil {
 		t.Error("expected error to be returned, but error returned nil")
 	}
@@ -382,10 +393,10 @@ func TestJWTVerifier_ValidStructureValidJSONGarbageToken(t *testing.T) {
 func TestJWTVerifier_ValidJWTInvalidSigning(t *testing.T) {
 	verifier := createVerifier(t)
 
-	result, err := verifier.Verify([]byte(
-		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
-			"eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6I" +
-			"kpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ." +
+	result, err := verifier.Verify(context.TODO(), []byte(
+		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."+
+			"eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6I"+
+			"kpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ."+
 			"SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"))
 	if err == nil {
 		t.Error("expected error to be returned, but error returned nil")

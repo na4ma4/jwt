@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -12,6 +13,9 @@ import (
 //
 //nolint:forbidigo // Example
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Create signer using RSA private key in PEM format (no passphrase)
 	signer, err := jwt.NewRSASignerFromFile("key.pem")
 	if err != nil {
@@ -20,6 +24,7 @@ func main() {
 
 	// Sign list of claims as a token
 	token, err := signer.SignClaims(
+		ctx,
 		jwt.String(jwt.Subject, "user100"),
 		jwt.String(jwt.Audience, "myservice"),
 		jwt.Time(jwt.Issued, time.Now()),
@@ -44,7 +49,7 @@ func main() {
 	}
 
 	// Verify token has a valid signature and the audience matches this service
-	result, err := verifier.Verify(token)
+	result, err := verifier.Verify(ctx, token)
 	if err != nil {
 		log.Panic(err)
 	}

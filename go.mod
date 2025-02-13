@@ -9,4 +9,4 @@ require (
 	github.com/spf13/afero v1.12.0
 )
 
-require golang.org/x/text v0.21.0 // indirect
+require golang.org/x/text v0.22.0 // indirect

@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"context"
 	"crypto/rsa"
 	"fmt"
 	"time"
@@ -22,7 +23,7 @@ const (
 
 // Signer produces a token from a supplied subject and audience with notbefore and expiry times.
 type Signer interface {
-	SignClaims(claims ...Claim) ([]byte, error)
+	SignClaims(ctx context.Context, claims ...Claim) ([]byte, error)
 }
 
 // RSASigner implements the `Signer` interface and creates a token signed with RSA public/private keys.
@@ -46,7 +47,7 @@ func NewRSASignerFromFile(filename string) (Signer, error) {
 }
 
 // SignClaims takes a list of claims and produces a signed token.
-func (r *RSASigner) SignClaims(claims ...Claim) ([]byte, error) {
+func (r *RSASigner) SignClaims(_ context.Context, claims ...Claim) ([]byte, error) {
 	tokenClaims, err := ConstructClaimsFromSlice(
 		append(
 			[]Claim{String("iss", r.Issuer)},
@@ -67,6 +68,7 @@ func (r *RSASigner) SignClaims(claims ...Claim) ([]byte, error) {
 
 // Sign takes a signer, subject, audience, online status, notBefore and expiry and produces a signed token.
 func Sign(
+	ctx context.Context,
 	signer Signer,
 	audience []string,
 	subject string,
@@ -74,6 +76,7 @@ func Sign(
 	notBefore, expiry time.Time,
 ) ([]byte, error) {
 	token, err := signer.SignClaims(
+		ctx,
 		String(Subject, subject),
 		Strings(Audience, audience),
 		Bool("onl", online),
