@@ -11,7 +11,7 @@ JWT Signer and Verifier for RSA Signed Tokens.
 
 ## Installation
 
-`go get -u github.com/na4ma4/jwt/v2`
+`go get -u github.com/na4ma4/jwt/v3`
 
 ## Example
 

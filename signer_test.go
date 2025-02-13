@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/na4ma4/jwt/v2"
+	"github.com/na4ma4/jwt/v3"
 )
 
 func expectBool(t *testing.T, name string, value, expect bool) {

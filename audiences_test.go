@@ -3,7 +3,7 @@ package jwt_test
 import (
 	"testing"
 
-	"github.com/na4ma4/jwt/v2"
+	"github.com/na4ma4/jwt/v3"
 )
 
 func ExpectBool(t *testing.T, name string, expect, input bool) {

@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/na4ma4/jwt/v2"
+	"github.com/na4ma4/jwt/v3"
 )
 
 // Generate Token from authentication service.

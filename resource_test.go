@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/na4ma4/go-permbits"
-	"github.com/na4ma4/jwt/v2"
+	"github.com/na4ma4/jwt/v3"
 	"github.com/spf13/afero"
 )
 

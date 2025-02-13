@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/na4ma4/jwt/v2"
+	"github.com/na4ma4/jwt/v3"
 )
 
 // notBefore = time.Now().Add(-1 * time.Minute).UTC()

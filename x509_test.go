@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/na4ma4/jwt/v2"
+	"github.com/na4ma4/jwt/v3"
 )
 
 func TestX509FileOperations_Succeed_PublicKeyFromAFS(t *testing.T) {

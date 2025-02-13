@@ -1,4 +1,4 @@
-module github.com/na4ma4/jwt/v2
+module github.com/na4ma4/jwt/v3
 
 go 1.22.2
 
