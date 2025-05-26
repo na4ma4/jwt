@@ -1,4 +1,4 @@
-module github.com/na4ma4/jwt/magefiles
+module github.com/na4ma4/jwt/v3/magefiles
 
 go 1.23.0
 
