@@ -68,7 +68,9 @@ func TestJWTVerifier_ShouldSucceed(t *testing.T) {
 			expectStringNotEmpty(t, tt.name+":result.ID", result.ID)
 			expectStringEmpty(t, tt.name+":result.Fingerprint", result.Fingerprint)
 			expectString(t, tt.name+":result.Subject", result.Subject, tt.subject)
-			expectString(t, tt.name+":result.Audience", strings.Join(result.Audience, ":"), strings.Join(audiences, ":"))
+			expectString(t, tt.name+":result.Audience",
+				strings.Join(result.Audience, ":"), strings.Join(audiences, ":"),
+			)
 			expectBool(t, tt.name+":result.IsOnline", result.IsOnline, tt.online)
 			expectTimeVaguelyEqual(t, tt.name+":result.NotBefore", result.NotBefore, tt.nbf)
 			expectTimeVaguelyEqual(t, tt.name+":result.Expires", result.Expires, tt.exp)
