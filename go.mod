@@ -1,6 +1,6 @@
 module github.com/na4ma4/jwt/v3
 
-go 1.23.0
+go 1.24.0
 
 toolchain go1.24.1
 
@@ -11,4 +11,4 @@ require (
 	github.com/spf13/afero v1.15.0
 )
 
-require golang.org/x/text v0.28.0 // indirect
+require golang.org/x/text v0.33.0 // indirect
