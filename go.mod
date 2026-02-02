@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/na4ma4/go-permbits v0.5.3
+	github.com/na4ma4/go-permbits v0.5.4
 	github.com/pascaldekloe/jwt v1.12.0
 	github.com/spf13/afero v1.15.0
 )
